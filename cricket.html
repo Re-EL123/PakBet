@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Cricket</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
+      <div class="space-x-6">
+        <a href="index.html" class="hover:text-green-400">Home</a>
+        <a href="soccer.html" class="hover:text-green-400">Soccer</a>
+        <a href="aviator.html" class="hover:text-green-400">Aviator</a>
+        <a href="cricket.html" class="text-green-400 border-b-2 border-green-400">Cricket</a>
+        <a href="casino.html" class="hover:text-green-400">Casino</a>
+        <a href="auth.html" class="hover:text-green-400">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-4xl font-extrabold mb-6">Cricket Betting</h1>
+    <p class="text-gray-300 mb-8">
+      From IPL to Test matches, place bets on every format and follow live scores.
+    </p>
+
+    <!-- Matches List (placeholder) -->
+    <div class="space-y-4">
+      <div class="bg-gray-800 p-6 rounded-xl flex justify-between items-center hover:shadow-green-500">
+        <div>
+          <h2 class="text-2xl font-semibold">India vs. Australia</h2>
+          <p class="text-gray-400">Test Series — May 28, 2025</p>
+        </div>
+        <button class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
+          Bet Now
+        </button>
+      </div>
+      <div class="bg-gray-800 p-6 rounded-xl flex justify-between items-center hover:shadow-green-500">
+        <div>
+          <h2 class="text-2xl font-semibold">England vs. New Zealand</h2>
+          <p class="text-gray-400">ODI — May 30, 2025</p>
+        </div>
+        <button class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
+          Bet Now
+        </button>
+      </div>
+      <!-- More matches dynamically loaded -->
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+</body>
+</html>
