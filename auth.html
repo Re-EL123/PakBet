@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet - Login / Sign Up</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen px-4">
+
+  <div class="w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-8 space-y-6">
+    <h2 class="text-3xl font-bold text-center text-green-500">PakBet Access</h2>
+
+    <!-- Tabs -->
+    <div class="flex justify-center gap-4 mb-4">
+      <button id="loginTab" class="tab-btn font-semibold text-white border-b-2 border-green-500">Login</button>
+      <button id="signupTab" class="tab-btn font-semibold text-gray-400 hover:text-white">Sign Up</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="space-y-4">
+      <input type="email" placeholder="Email" class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <input type="password" placeholder="Password" class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">Login</button>
+    </form>
+
+    <!-- Signup Form (hidden by default) -->
+    <form id="signupForm" class="space-y-4 hidden">
+      <input type="text" placeholder="Full Name" class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <input type="email" placeholder="Email" class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <input type="password" placeholder="Password" class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">Sign Up</button>
+    </form>
+  </div>
+
+  <script>
+    const loginTab = document.getElementById('loginTab');
+    const signupTab = document.getElementById('signupTab');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+
+    loginTab.addEventListener('click', () => {
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+      loginTab.classList.add('text-white', 'border-green-500');
+      signupTab.classList.remove('text-white', 'border-green-500');
+    });
+
+    signupTab.addEventListener('click', () => {
+      signupForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+      signupTab.classList.add('text-white', 'border-green-500');
+      loginTab.classList.remove('text-white', 'border-green-500');
+    });
+  </script>
+
+</body>
+</html>
