@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Choose Your Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
+      <div class="space-x-6">
+        <a href="index.html" class="hover:text-green-400">Home</a>
+        <a href="games.html" class="text-green-400 border-b-2 border-green-400">Games</a>
+        <a href="auth.html" class="hover:text-green-400">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
+    <h1 class="text-4xl font-extrabold text-center mb-10">Choose Your Game</h1>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+      <!-- Soccer -->
+      <a href="soccer.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">Soccer</h2>
+        <p class="text-gray-300">Bet on local and international football matches.</p>
+      </a>
+
+      <!-- Aviator -->
+      <a href="aviator.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">Aviator</h2>
+        <p class="text-gray-300">Place a bet and cash out before the plane flies!</p>
+      </a>
+
+      <!-- Cricket -->
+      <a href="cricket.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">Cricket</h2>
+        <p class="text-gray-300">Wager on T20s, ODIs, and test matches.</p>
+      </a>
+
+      <!-- Casino -->
+      <a href="casino.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">Casino</h2>
+        <p class="text-gray-300">Enjoy slots, roulette, blackjack, and more.</p>
+      </a>
+
+      <!-- Add more games here -->
+      <!-- Example: -->
+      <!--
+      <a href="esports.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+        <h2 class="text-2xl font-bold text-green-400 mb-2">eSports</h2>
+        <p class="text-gray-300">Bet on CS:GO, Dota 2, and more tournaments.</p>
+      </a>
+      -->
+
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+</body>
+</html>
