@@ -13,13 +13,13 @@
 
     <!-- Tabs -->
     <div class="flex justify-center gap-4 mb-4">
-      <button id="loginTab" class="tab-btn font-semibold text-white border-b-2 border-green-500">Login</button>
-      <button id="signupTab" class="tab-btn font-semibold text-gray-400 hover:text-white">Sign Up</button>
+      <button id="loginTab" class="font-semibold text-white border-b-2 border-green-500">Login</button>
+      <button id="signupTab" class="font-semibold text-gray-400 hover:text-white">Sign Up</button>
     </div>
 
     <!-- Login Form -->
     <form id="loginForm" class="space-y-4">
-      <input id="loginEmail" type="email" placeholder="Email" required
+      <input id="loginEmail"    type="email"    placeholder="Email"    required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
       <input id="loginPassword" type="password" placeholder="Password" required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
@@ -30,9 +30,9 @@
 
     <!-- Signup Form -->
     <form id="signupForm" class="space-y-4 hidden">
-      <input id="signupName" type="text" placeholder="Full Name" required
+      <input id="signupName"     type="text"     placeholder="Full Name"          required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <input id="signupEmail" type="email" placeholder="Email" required
+      <input id="signupEmail"    type="email"    placeholder="Email"               required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
       <input id="signupPassword" type="password" placeholder="Password (6+ chars)" required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
@@ -42,10 +42,11 @@
     </form>
   </div>
 
-  <!-- Your existing Firebase init script -->
+  <!-- Firebase Initialization & Auth Logic -->
   <script type="module">
+    // Core SDKs
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
     import {
       getAuth,
       createUserWithEmailAndPassword,
@@ -54,8 +55,9 @@
       onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
+    // **Your exact Firebase config**
     const firebaseConfig = {
-      apiKey: "...",
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
       storageBucket: "pakbet-b0abe.firebasestorage.app",
@@ -63,15 +65,17 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-    const app       = initializeApp(firebaseConfig);
+
+    // Initialize Firebase
+    const app   = initializeApp(firebaseConfig);
     getAnalytics(app);
-    const auth      = getAuth(app);
+    const auth  = getAuth(app);
 
     // Tab switching
-    const loginTab    = document.getElementById('loginTab');
-    const signupTab   = document.getElementById('signupTab');
-    const loginForm   = document.getElementById('loginForm');
-    const signupForm  = document.getElementById('signupForm');
+    const loginTab   = document.getElementById('loginTab');
+    const signupTab  = document.getElementById('signupTab');
+    const loginForm  = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
 
     loginTab.addEventListener('click', () => {
       loginForm.classList.remove('hidden');
@@ -79,6 +83,7 @@
       loginTab.classList.add('text-white','border-green-500');
       signupTab.classList.remove('text-white','border-green-500');
     });
+
     signupTab.addEventListener('click', () => {
       signupForm.classList.remove('hidden');
       loginForm.classList.add('hidden');
@@ -95,7 +100,6 @@
       try {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCred.user, { displayName: name });
-        // Redirect to dashboard
         window.location.href = 'dashboard.html';
       } catch (err) {
         alert(err.message);
@@ -109,18 +113,15 @@
       const password = document.getElementById('loginPassword').value;
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // Redirect to dashboard
         window.location.href = 'dashboard.html';
       } catch (err) {
         alert(err.message);
       }
     });
 
-    // If already logged in, go straight to dashboard
+    // Auto-redirect if already logged in
     onAuthStateChanged(auth, user => {
-      if (user) {
-        window.location.href = 'dashboard.html';
-      }
+      if (user) window.location.href = 'dashboard.html';
     });
   </script>
 
