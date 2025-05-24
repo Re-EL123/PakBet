@@ -24,7 +24,10 @@
       <input id="loginPassword" type="password" placeholder="Password" required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
       <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
-        Login
+        Login with Email
+      </button>
+      <button id="resendVerification" type="button" class="w-full bg-yellow-500 hover:bg-yellow-600 py-2 rounded font-bold hidden">
+        Resend Verification Email
       </button>
     </form>
 
@@ -37,25 +40,28 @@
       <input id="signupPassword" type="password" placeholder="Password (6+ chars)" required
              class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
       <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
-        Sign Up
+        Sign Up with Email
       </button>
     </form>
   </div>
 
-  <!-- Firebase Initialization & Auth Logic -->
   <script type="module">
-    // Core SDKs
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp }           from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics }           from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
     import {
       getAuth,
       createUserWithEmailAndPassword,
       signInWithEmailAndPassword,
+      sendEmailVerification,
+      GoogleAuthProvider,
+      signInWithPopup,
+      RecaptchaVerifier,
+      signInWithPhoneNumber,
       updateProfile,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+      onAuthStateChanged,
+      signOut
+    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
-    // **Your exact Firebase config**
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
@@ -65,17 +71,15 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-
-    // Initialize Firebase
     const app   = initializeApp(firebaseConfig);
     getAnalytics(app);
     const auth  = getAuth(app);
 
-    // Tab switching
-    const loginTab   = document.getElementById('loginTab');
-    const signupTab  = document.getElementById('signupTab');
-    const loginForm  = document.getElementById('loginForm');
-    const signupForm = document.getElementById('signupForm');
+    const loginTab    = document.getElementById('loginTab');
+    const signupTab   = document.getElementById('signupTab');
+    const loginForm   = document.getElementById('loginForm');
+    const signupForm  = document.getElementById('signupForm');
+    const resendBtn   = document.getElementById('resendVerification');
 
     loginTab.addEventListener('click', () => {
       loginForm.classList.remove('hidden');
@@ -83,7 +87,6 @@
       loginTab.classList.add('text-white','border-green-500');
       signupTab.classList.remove('text-white','border-green-500');
     });
-
     signupTab.addEventListener('click', () => {
       signupForm.classList.remove('hidden');
       loginForm.classList.add('hidden');
@@ -91,7 +94,7 @@
       loginTab.classList.remove('text-white','border-green-500');
     });
 
-    // Handle Sign Up
+    // Sign Up
     signupForm.addEventListener('submit', async e => {
       e.preventDefault();
       const name     = document.getElementById('signupName').value;
@@ -100,28 +103,62 @@
       try {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCred.user, { displayName: name });
-        window.location.href = 'dashboard.html';
+        await sendEmailVerification(userCred.user);
+        alert('Verification email sent. Please check your inbox before logging in.');
+        await signOut(auth);
+        loginTab.click();
       } catch (err) {
         alert(err.message);
       }
     });
 
-    // Handle Login
+    // Login
     loginForm.addEventListener('submit', async e => {
       e.preventDefault();
       const email    = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCred = await signInWithEmailAndPassword(auth, email, password);
+        if (!userCred.user.emailVerified) {
+          await sendEmailVerification(userCred.user);
+          alert('Email not verified. Verification link resent. Please check your inbox.');
+          await signOut(auth);
+          resendBtn.classList.remove('hidden');
+          return;
+        }
         window.location.href = 'dashboard.html';
       } catch (err) {
         alert(err.message);
       }
     });
 
-    // Auto-redirect if already logged in
+    // Resend Verification from login form
+    resendBtn.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (user && !user.emailVerified) {
+        await sendEmailVerification(user);
+        alert('Verification email resent. Please check your inbox.');
+      }
+    });
+
+    // Google Sign-In (bypasses email verification)
+    const googleProvider = new GoogleAuthProvider();
+    document.getElementById('googleSignIn')?.addEventListener('click', async () => {
+      try {
+        await signInWithPopup(auth, googleProvider);
+        window.location.href = 'dashboard.html';
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    // Phone Auth setup omitted for brevity…
+
+    // Redirect if already logged in & verified
     onAuthStateChanged(auth, user => {
-      if (user) window.location.href = 'dashboard.html';
+      if (user && user.emailVerified) {
+        window.location.href = 'dashboard.html';
+      }
     });
   </script>
 
