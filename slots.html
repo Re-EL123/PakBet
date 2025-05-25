@@ -12,13 +12,13 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6">
+      <div class="space-x-6 flex items-center" id="navbar-links">
         <a href="index.html" class="hover:text-green-400">Home</a>
         <a href="soccer.html" class="hover:text-green-400">Soccer</a>
         <a href="aviator.html" class="hover:text-green-400">Aviator</a>
         <a href="cricket.html" class="hover:text-green-400">Cricket</a>
         <a href="casino.html" class="hover:text-green-400">Casino</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
+        <a href="auth.html" id="auth-link" class="hover:text-green-400">Login</a>
       </div>
     </div>
   </nav>
@@ -33,9 +33,9 @@
     <!-- Slots Machine -->
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <div class="flex justify-center space-x-4 mb-6">
-        <img id="reel1" src="assets/images/slots/cherry.png" alt="Reel 1" class="w-24 h-24"/>
-        <img id="reel2" src="assets/images/slots/lemon.png" alt="Reel 2" class="w-24 h-24"/>
-        <img id="reel3" src="assets/images/slots/bell.png" alt="Reel 3" class="w-24 h-24"/>
+        <img id="reel1" src="/slots_assets/cherry.png" alt="Reel 1" class="w-24 h-24"/>
+        <img id="reel2" src="/slots_assets/lemon.png" alt="Reel 2" class="w-24 h-24"/>
+        <img id="reel3" src="/slots_assets/bell.png" alt="Reel 3" class="w-24 h-24"/>
       </div>
       <button id="spinBtn" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600 mb-4">
         Spin
@@ -52,7 +52,9 @@
   <!-- Firebase SDK Script -->
   <script type="module">
     import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAnalytics }    from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -66,12 +68,25 @@
 
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uid = user.uid;
+        const userDoc = await getDoc(doc(db, "users", uid));
+        const userData = userDoc.exists() ? userDoc.data() : { name: "Player", balance: 0 };
+
+        const authLink = document.getElementById("auth-link");
+        authLink.outerHTML = `<span class="text-green-400">💰 ${userData.name} — $${userData.balance}</span>`;
+      }
+    });
   </script>
 
   <!-- Slots Logic -->
   <script>
     (function() {
-      const symbols = ['cherry', 'lemon', 'bell', 'seven', 'diamond'];
+      const symbols = ['cherry', 'lemon', 'bell', 'seven', 'diamond', 'grape', 'orange'];
       const spinBtn = document.getElementById('spinBtn');
       const reels    = [
         document.getElementById('reel1'),
@@ -87,12 +102,11 @@
       function spin() {
         spinBtn.disabled = true;
         resultEl.textContent = '';
-        // Animate quick random
         let rounds = 20;
         const interval = setInterval(() => {
           reels.forEach(img => {
             const sym = randomSymbol();
-            img.src = `assets/images/slots/${sym}.png`;
+            img.src = `/slots_assets/${sym}.png`;
           });
           if (--rounds === 0) {
             clearInterval(interval);
@@ -102,7 +116,6 @@
       }
 
       function finalize() {
-        // Check if all three match
         const srcs = reels.map(img => img.src.split('/').pop().replace('.png',''));
         if (srcs[0] === srcs[1] && srcs[1] === srcs[2]) {
           resultEl.textContent = `🎉 Jackpot! Three ${srcs[0]}s!`;
