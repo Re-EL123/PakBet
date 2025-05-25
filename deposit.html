@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Deposit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
+      <div class="space-x-6">
+        <a href="wallet.html" class="hover:text-green-400">Wallet</a>
+        <a href="deposit.html" class="text-green-400 border-b-2 border-green-400">Deposit</a>
+        <a href="withdraw.html" class="hover:text-green-400">Withdraw</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Deposit Form -->
+  <main class="flex-grow max-w-xl mx-auto px-4 py-12 text-center">
+    <h1 class="text-4xl font-extrabold mb-6">Deposit Funds</h1>
+    <p class="text-gray-300 mb-8">Add money to your PakBet Wallet</p>
+
+    <div class="bg-gray-800 p-8 rounded-xl shadow-md">
+      <input
+        id="depositAmount"
+        type="number"
+        placeholder="Amount (ZAR)"
+        class="w-full p-3 mb-4 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+      />
+      <button
+        id="depositBtn"
+        class="bg-green-500 w-full py-3 rounded font-bold hover:bg-green-600">
+        Deposit via PayFast
+      </button>
+      <p id="depositMessage" class="mt-4 text-sm text-yellow-400"></p>
+    </div>
+  </main>
+
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+  <script>
+    document.getElementById('depositBtn').addEventListener('click', () => {
+      const amount = parseFloat(document.getElementById('depositAmount').value);
+      const msg = document.getElementById('depositMessage');
+
+      if (!amount || amount <= 0) {
+        msg.textContent = 'Enter a valid amount.';
+        return;
+      }
+
+      msg.textContent = 'Redirecting to payment...';
+
+      // Simulate or redirect to PayFast (replace with real endpoint)
+      setTimeout(() => {
+        window.location.href = `https://sandbox.payfast.co.za/eng/process?amount=${amount}`;
+      }, 1500);
+    });
+  </script>
+</body>
+</html>
