@@ -12,16 +12,14 @@
     <h1 class="text-3xl font-bold text-green-400 text-center">PakBet Admin Dashboard</h1>
   </header>
 
-  <main class="max-w-5xl mx-auto p-6 space-y-12">
+  <main class="max-w-6xl mx-auto p-6 space-y-12">
     <!-- Update User Balance -->
     <section>
       <h2 class="text-xl font-bold mb-4">Update User Balance</h2>
       <div class="flex flex-col md:flex-row gap-4">
         <input type="text" id="balanceUid" placeholder="User UID" class="p-2 rounded bg-gray-700 text-white flex-1"/>
         <input type="number" id="balanceAmount" placeholder="New Balance" class="p-2 rounded bg-gray-700 text-white flex-1"/>
-        <button id="updateBalanceBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">
-          Update
-        </button>
+        <button id="updateBalanceBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">Update</button>
       </div>
       <p id="balanceUpdateStatus" class="mt-2 text-sm text-gray-300"></p>
     </section>
@@ -38,6 +36,12 @@
       <textarea id="alertMessage" placeholder="Enter alert message..." class="w-full p-2 bg-gray-700 text-white rounded mb-2"></textarea>
       <button id="sendAlertBtn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-700">Send Alert</button>
     </section>
+
+    <!-- Manage User Accounts -->
+    <section>
+      <h2 class="text-xl font-bold mb-4">User Account Control</h2>
+      <div id="userList" class="space-y-4"></div>
+    </section>
   </main>
 
   <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
@@ -47,7 +51,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, doc, setDoc, updateDoc, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, setDoc, updateDoc, collection, getDocs, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -124,8 +128,62 @@
       if (!message) return;
       await addDoc(collection(db, "alerts"), { message, timestamp: Date.now() });
       alertMessage.value = "";
-      alert("Alert sent to users!");
+      alert("✅ Alert sent to users.");
     });
+
+    // Load Users
+    const userList = document.getElementById('userList');
+
+    async function loadUsers() {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      userList.innerHTML = "";
+      usersSnapshot.forEach((docSnap) => {
+        const user = docSnap.data();
+        const uid = docSnap.id;
+        const el = document.createElement("div");
+        el.className = "bg-gray-800 p-4 rounded shadow";
+        el.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div>
+              <p><strong>UID:</strong> ${uid}</p>
+              <p><strong>Email:</strong> ${user.email}</p>
+              <p><strong>Username:</strong> <input id="username-${uid}" class="bg-gray-700 text-white px-2 py-1 rounded w-48" value="${user.username || ''}" /></p>
+              <p><strong>Admin:</strong> ${user.isAdmin ? "✅" : "❌"}</p>
+            </div>
+            <div class="space-x-2 mt-2 md:mt-0">
+              <button onclick="updateUsername('${uid}')" class="bg-yellow-500 px-3 py-1 rounded hover:bg-yellow-600">Update Username</button>
+              <button onclick="makeAdmin('${uid}')" class="bg-blue-500 px-3 py-1 rounded hover:bg-blue-600">Make Admin</button>
+              <button onclick="deleteUser('${uid}')" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Delete</button>
+            </div>
+          </div>
+        `;
+        userList.appendChild(el);
+      });
+    }
+
+    window.updateUsername = async (uid) => {
+      const newUsername = document.getElementById(`username-${uid}`).value.trim();
+      if (!newUsername) return;
+      await updateDoc(doc(db, "users", uid), { username: newUsername });
+      alert(`✅ Username updated for ${uid}`);
+    };
+
+    window.makeAdmin = async (uid) => {
+      await updateDoc(doc(db, "users", uid), { isAdmin: true });
+      alert(`✅ ${uid} is now an admin`);
+      loadUsers();
+    };
+
+    window.deleteUser = async (uid) => {
+      if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+        await deleteDoc(doc(db, "users", uid));
+        await deleteDoc(doc(db, "wallets", uid));
+        alert(`✅ Deleted user and wallet data for UID: ${uid}`);
+        loadUsers();
+      }
+    };
+
+    loadUsers();
   </script>
 
 </body>
