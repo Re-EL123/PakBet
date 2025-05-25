@@ -41,6 +41,9 @@
             Deposit
           </button>
         </div>
+        <a href="deposit.html" class="inline-block mt-2 text-sm text-green-400 hover:underline">
+          Go to Advanced Deposit
+        </a>
       </div>
 
       <!-- Withdraw Section -->
@@ -53,6 +56,22 @@
             Withdraw
           </button>
         </div>
+        <a href="withdraw.html" class="inline-block mt-2 text-sm text-yellow-400 hover:underline">
+          Go to Advanced Withdraw
+        </a>
+      </div>
+
+      <!-- Voucher Section -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Buy Voucher</h2>
+        <div class="flex items-center space-x-4">
+          <button id="buyVoucherBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded font-bold">
+            Buy Voucher
+          </button>
+        </div>
+        <a href="buy-voucher.html" class="inline-block mt-2 text-sm text-blue-400 hover:underline">
+          Go to Voucher Store
+        </a>
       </div>
 
       <p id="statusMessage" class="text-center text-sm text-gray-400"></p>
@@ -109,6 +128,7 @@
     const bankInput      = document.getElementById('bank-details');
     const withdrawBtn    = document.getElementById('withdrawBtn');
     const txList         = document.getElementById('transactionsList');
+    const buyVoucherBtn  = document.getElementById('buyVoucherBtn');
 
     // Load latest alert
     async function loadLatestAlert() {
@@ -154,7 +174,7 @@
         return window.location.href = 'auth.html';
       }
 
-      // Setup Navbar profile
+      // Seed wallet if needed
       const walletRef  = doc(db, 'wallets', user.uid);
       const walletSnap = await getDoc(walletRef);
       if (!walletSnap.exists()) {
@@ -165,6 +185,7 @@
       greeting.textContent = `Welcome, ${user.displayName || 'Player'}!`;
       balanceEl.textContent  = balance;
 
+      // Profile dropdown
       const container = document.createElement('div');
       container.className = 'relative';
       const userBtn = document.createElement('button');
@@ -176,8 +197,10 @@
       menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
       menu.innerHTML = `
         <a href="dashboard.html" class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
-        <a href="auth.html" class="block px-4 py-2 hover:bg-gray-700" id="lnk-auth">Account</a>
-        <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
+        <a href="deposit.html" class="block px-4 py-2 hover:bg-gray-700">Deposit</a>
+        <a href="withdraw.html" class="block px-4 py-2 hover:bg-gray-700">Withdraw</a>
+        <a href="buy-voucher.html" class="block px-4 py-2 hover:bg-gray-700">Vouchers</a>
+        <button id="logoutBtn"   class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
       `;
       container.appendChild(menu);
       userBtn.addEventListener('click', () => menu.classList.toggle('hidden'));
@@ -219,8 +242,7 @@
       const amt = parseFloat(withdrawInput.value);
       const bank = bankInput.value.trim();
       if (!bank || isNaN(amt) || amt <= 0) {
-        statusMsg.textContent = 'Enter amount and bank details.';
-        return;
+        statusMsg.textContent = 'Enter amount and bank details.'; return;
       }
       withdrawBtn.disabled = true;
       statusMsg.textContent = 'Processing withdrawal…';
@@ -229,9 +251,7 @@
       const snap = await getDoc(walletRef);
       const curr = snap.data().balance || 0;
       if (amt > curr) {
-        statusMsg.textContent = 'Insufficient funds.';
-        withdrawBtn.disabled = false;
-        return;
+        statusMsg.textContent = 'Insufficient funds.'; withdrawBtn.disabled = false; return;
       }
       const newBal = curr - amt;
       await updateDoc(walletRef, { balance: newBal, lastUpdated: serverTimestamp() });
@@ -242,6 +262,11 @@
       statusMsg.textContent = `Withdrew R${amt.toFixed(2)} successfully.`;
       loadTransactions(user.uid);
       withdrawBtn.disabled = false;
+    });
+
+    // Buy voucher placeholder
+    buyVoucherBtn.addEventListener('click', () => {
+      window.location.href = 'buy-voucher.html';
     });
   </script>
 </body>
