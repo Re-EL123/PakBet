@@ -33,9 +33,9 @@
     <!-- Slots Machine -->
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <div class="flex justify-center space-x-4 mb-6">
-        <img id="reel1" src="/slots_assets/cherry.png" alt="Reel 1" class="w-24 h-24"/>
-        <img id="reel2" src="/slots_assets/lemon.png" alt="Reel 2" class="w-24 h-24"/>
-        <img id="reel3" src="/slots_assets/bell.png" alt="Reel 3" class="w-24 h-24"/>
+        <img id="reel1" src="assets//slots_assets/cherry.png" alt="Reel 1" class="w-24 h-24"/>
+        <img id="reel2" src="assets//slots_assets/lemon.png" alt="Reel 2" class="w-24 h-24"/>
+        <img id="reel3" src="assets//slots_assets/bell.png" alt="Reel 3" class="w-24 h-24"/>
       </div>
       <button id="spinBtn" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600 mb-4">
         Spin
@@ -106,7 +106,7 @@
         const interval = setInterval(() => {
           reels.forEach(img => {
             const sym = randomSymbol();
-            img.src = `/slots_assets/${sym}.png`;
+            img.src = `assets//slots_assets/${sym}.png`;
           });
           if (--rounds === 0) {
             clearInterval(interval);
