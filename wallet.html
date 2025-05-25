@@ -12,25 +12,237 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6">
+      <div class="space-x-6 flex items-center" id="nav-controls">
         <a href="index.html" class="hover:text-green-400">Home</a>
         <a href="wallet.html" class="text-green-400 border-b-2 border-green-400">Wallet</a>
         <a href="casino.html" class="hover:text-green-400">Casino</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
+        <a href="auth.html" id="loginLink" class="hover:text-green-400">Login</a>
       </div>
     </div>
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
   <!-- Wallet Content -->
-  <main class="flex-grow max-w-3xl mx-auto px-4 py-12">
+  <main class="flex-grow max-w-3xl mx-auto px-4 py-12 space-y-8">
     <h1 class="text-4xl font-bold text-center mb-6">My Wallet</h1>
 
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <p class="text-xl mb-4">Balance: <span id="wallet-balance" class="text-green-400">Loading...</span></p>
+    <!-- Profile Greeting & Balance -->
+    <div id="greeting" class="text-center text-lg text-gray-300"></div>
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
+      <p class="text-xl">Balance: <span id="wallet-balance" class="text-green-400">Loading...</span></p>
 
       <!-- Deposit Section -->
-      <div class="mb-6">
+      <div>
         <h2 class="text-lg font-semibold mb-2">Deposit</h2>
-        <div class="flex space-x-4">
-          <input id="deposit-amount" type="number" placeholder="Amount" class="p-2 w-32 rounded bg-gray-700 text-white"/>
-          <button
+        <div class="flex items-center space-x-4">
+          <input id="deposit-amount" type="number" placeholder="Amount" class="p-2 w-32 rounded bg-gray-700 text-white focus:outline-none"/>
+          <button id="depositBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+            Deposit
+          </button>
+        </div>
+      </div>
+
+      <!-- Withdraw Section -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Withdraw</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+          <input id="withdraw-amount" type="number" placeholder="Amount" class="p-2 w-32 rounded bg-gray-700 text-white focus:outline-none"/>
+          <input id="bank-details" type="text" placeholder="Bank Details" class="p-2 rounded bg-gray-700 text-white focus:outline-none flex-1"/>
+          <button id="withdrawBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+            Withdraw
+          </button>
+        </div>
+      </div>
+
+      <p id="statusMessage" class="text-center text-sm text-gray-400"></p>
+    </div>
+
+    <!-- Recent Transactions -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-4 text-green-400">Recent Transactions</h2>
+      <ul id="transactionsList" class="bg-gray-800 p-4 rounded-xl space-y-2">
+        <li>Loading transactions…</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+  <!-- Firebase SDK & Wallet Logic -->
+  <script type="module">
+    import { initializeApp }                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut }          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc, getDoc, setDoc, serverTimestamp,
+      collection, query, where, orderBy, limit, getDocs,
+      updateDoc, addDoc
+    }                                                         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.firebasestorage.app",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // UI Elements
+    const navControls    = document.getElementById('nav-controls');
+    const loginLink      = document.getElementById('loginLink');
+    const alertBanner    = document.getElementById('alertBanner');
+    const greeting       = document.getElementById('greeting');
+    const balanceEl      = document.getElementById('wallet-balance');
+    const statusMsg      = document.getElementById('statusMessage');
+    const depositInput   = document.getElementById('deposit-amount');
+    const depositBtn     = document.getElementById('depositBtn');
+    const withdrawInput  = document.getElementById('withdraw-amount');
+    const bankInput      = document.getElementById('bank-details');
+    const withdrawBtn    = document.getElementById('withdrawBtn');
+    const txList         = document.getElementById('transactionsList');
+
+    // Load latest alert
+    async function loadLatestAlert() {
+      const q = query(collection(db, 'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    // Load recent transactions
+    async function loadTransactions(uid) {
+      const q = query(
+        collection(db, 'transactions'),
+        where('uid','==',uid),
+        orderBy('timestamp','desc'),
+        limit(5)
+      );
+      const snap = await getDocs(q);
+      txList.innerHTML = '';
+      if (snap.empty) {
+        txList.innerHTML = '<li>No transactions yet.</li>';
+        return;
+      }
+      snap.forEach(docSnap => {
+        const { type, amount, timestamp } = docSnap.data();
+        const time = new Date(timestamp.seconds * 1000).toLocaleString();
+        const li = document.createElement('li');
+        li.className = 'flex justify-between';
+        li.innerHTML = `<span>${time} — ${type}</span><span>R${amount.toFixed(2)}</span>`;
+        txList.appendChild(li);
+      });
+    }
+
+    // Auth & Initialization
+    onAuthStateChanged(auth, async user => {
+      loginLink.remove();
+      await loadLatestAlert();
+
+      if (!user || (!user.emailVerified && user.providerData[0].providerId !== 'google.com')) {
+        await signOut(auth);
+        return window.location.href = 'auth.html';
+      }
+
+      // Setup Navbar profile
+      const walletRef  = doc(db, 'wallets', user.uid);
+      const walletSnap = await getDoc(walletRef);
+      if (!walletSnap.exists()) {
+        await setDoc(walletRef, { balance: 0, lastUpdated: serverTimestamp() });
+      }
+      const balance = (await getDoc(walletRef)).data().balance.toFixed(2);
+
+      greeting.textContent = `Welcome, ${user.displayName || 'Player'}!`;
+      balanceEl.textContent  = balance;
+
+      const container = document.createElement('div');
+      container.className = 'relative';
+      const userBtn = document.createElement('button');
+      userBtn.textContent = `${user.displayName || 'Profile'} — R${balance}`;
+      userBtn.className = 'text-green-400 hover:text-green-200 focus:outline-none';
+      container.appendChild(userBtn);
+
+      const menu = document.createElement('div');
+      menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
+      menu.innerHTML = `
+        <a href="dashboard.html" class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
+        <a href="auth.html" class="block px-4 py-2 hover:bg-gray-700" id="lnk-auth">Account</a>
+        <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
+      `;
+      container.appendChild(menu);
+      userBtn.addEventListener('click', () => menu.classList.toggle('hidden'));
+      menu.querySelector('#logoutBtn').addEventListener('click', async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      });
+      navControls.appendChild(container);
+
+      // Load transactions
+      loadTransactions(user.uid);
+    });
+
+    // Deposit handler
+    depositBtn.addEventListener('click', async () => {
+      const amt = parseFloat(depositInput.value);
+      if (isNaN(amt) || amt <= 0) {
+        statusMsg.textContent = 'Enter a valid deposit amount.';
+        return;
+      }
+      depositBtn.disabled = true;
+      statusMsg.textContent = 'Processing deposit…';
+      const user = auth.currentUser;
+      const walletRef = doc(db, 'wallets', user.uid);
+      const snap = await getDoc(walletRef);
+      const newBal = (snap.data().balance || 0) + amt;
+      await updateDoc(walletRef, { balance: newBal, lastUpdated: serverTimestamp() });
+      await addDoc(collection(db, 'transactions'), {
+        uid: user.uid, type: 'deposit', amount: amt, timestamp: serverTimestamp()
+      });
+      balanceEl.textContent = newBal.toFixed(2);
+      statusMsg.textContent = `Deposited R${amt.toFixed(2)} successfully.`;
+      loadTransactions(user.uid);
+      depositBtn.disabled = false;
+    });
+
+    // Withdraw handler
+    withdrawBtn.addEventListener('click', async () => {
+      const amt = parseFloat(withdrawInput.value);
+      const bank = bankInput.value.trim();
+      if (!bank || isNaN(amt) || amt <= 0) {
+        statusMsg.textContent = 'Enter amount and bank details.';
+        return;
+      }
+      withdrawBtn.disabled = true;
+      statusMsg.textContent = 'Processing withdrawal…';
+      const user = auth.currentUser;
+      const walletRef = doc(db, 'wallets', user.uid);
+      const snap = await getDoc(walletRef);
+      const curr = snap.data().balance || 0;
+      if (amt > curr) {
+        statusMsg.textContent = 'Insufficient funds.';
+        withdrawBtn.disabled = false;
+        return;
+      }
+      const newBal = curr - amt;
+      await updateDoc(walletRef, { balance: newBal, lastUpdated: serverTimestamp() });
+      await addDoc(collection(db, 'transactions'), {
+        uid: user.uid, type: 'withdrawal', amount: amt, timestamp: serverTimestamp()
+      });
+      balanceEl.textContent = newBal.toFixed(2);
+      statusMsg.textContent = `Withdrew R${amt.toFixed(2)} successfully.`;
+      loadTransactions(user.uid);
+      withdrawBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
