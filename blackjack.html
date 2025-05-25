@@ -36,7 +36,7 @@
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Dealer’s Hand (<span id="dealer-score">0</span>)</h2>
         <div id="dealer-cards" class="flex space-x-2">
-          <!-- e.g. <img src="cards/ace_of_spades.png" alt="A♠" class="w-20 h-28"> -->
+          <!-- e.g. <img src="assets/cards/ace_of_spades.png" alt="A♠" class="w-20 h-28"> -->
         </div>
       </div>
 
@@ -44,7 +44,7 @@
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Your Hand (<span id="player-score">0</span>)</h2>
         <div id="player-cards" class="flex space-x-2">
-          <!-- e.g. <img src="cards/king_of_hearts.png" alt="K♥" class="w-20 h-28"> -->
+          <!-- e.g. <img src="assets/cards/king_of_hearts.png" alt="K♥" class="w-20 h-28"> -->
         </div>
       </div>
 
@@ -107,19 +107,18 @@
       const btnStand = document.getElementById('btnStand');
       const resultEl = document.getElementById('bj-result');
 
-      // Build a fresh deck
+      // Build & shuffle deck
       function buildDeck() {
         deck = [];
         suits.forEach(suit => {
           ranks.forEach(rank => {
-            deck.push({suit, rank});
+            deck.push({ suit, rank });
           });
         });
-        // shuffle
         deck.sort(() => Math.random() - 0.5);
       }
 
-      // Calculate hand value (aces as 11 or 1)
+      // Calculate hand score (aces as 11 or 1)
       function calcScore(hand) {
         let score = 0, aces = 0;
         hand.forEach(card => {
@@ -127,19 +126,18 @@
           else if (card.rank === 'ace') { score += 11; aces++; }
           else score += Number(card.rank);
         });
-        // reduce aces from 11 to 1 if bust
         while (score > 21 && aces > 0) {
           score -= 10; aces--;
         }
         return score;
       }
 
-      // Render cards to container
+      // Render hand images & score
       function renderHand(hand, containerEl, scoreEl) {
         containerEl.innerHTML = '';
         hand.forEach(card => {
           const img = document.createElement('img');
-          img.src = `cards/${card.rank}_of_${card.suit}.png`;
+          img.src = `assets/cards/${card.rank}_of_${card.suit}.png`;
           img.alt = `${card.rank} of ${card.suit}`;
           img.className = 'w-20 h-28';
           containerEl.appendChild(img);
@@ -147,7 +145,7 @@
         scoreEl.textContent = calcScore(hand);
       }
 
-      // Deal initial hands
+      // Deal initial cards
       function deal() {
         buildDeck();
         dealerHand = [ deck.pop(), deck.pop() ];
@@ -163,24 +161,20 @@
       btnHit.addEventListener('click', () => {
         playerHand.push(deck.pop());
         renderHand(playerHand, playerCardsEl, playerScoreEl);
-        if (calcScore(playerHand) > 21) {
-          endRound();
-        }
+        if (calcScore(playerHand) > 21) endRound();
       });
 
       // Player stands
       btnStand.addEventListener('click', () => endRound(true));
 
-      // End of round logic
+      // End round logic
       function endRound(playerStood = false) {
         btnHit.disabled = true;
         btnStand.disabled = true;
 
-        // If player bust
         if (calcScore(playerHand) > 21) {
           resultEl.textContent = 'You busted! Dealer wins.';
         } else {
-          // Dealer draws until 17+
           while (calcScore(dealerHand) < 17) {
             dealerHand.push(deck.pop());
           }
