@@ -34,16 +34,20 @@
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <div id="aviator-game" class="mb-6">
         <!-- Canvas or game UI loads here -->
-        <p class="text-gray-400">[Game canvas will render here]</p>
+        <p class="text-gray-400 text-5xl" id="multiplier">×1.00</p>
       </div>
       <div class="flex space-x-4 justify-center">
         <input
+          id="betAmount"
           type="number"
           placeholder="Bet Amount"
           class="w-32 p-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
         />
-        <button class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
+        <button id="placeBet" class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
           Place Bet
+        </button>
+        <button id="cashOut" class="bg-yellow-500 px-4 py-2 rounded font-bold hover:bg-yellow-600 hidden">
+          Cash Out
         </button>
       </div>
     </div>
@@ -71,6 +75,68 @@
 
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
+  </script>
+
+  <!-- Aviator Game Logic -->
+  <script>
+    (function() {
+      const placeBetBtn = document.getElementById('placeBet');
+      const cashOutBtn  = document.getElementById('cashOut');
+      const multiplierEl= document.getElementById('multiplier');
+      const betInput    = document.getElementById('betAmount');
+      let animationId, crashPoint, currentMult;
+
+      function startRound() {
+        const bet = parseFloat(betInput.value);
+        if (!bet || bet <= 0) {
+          alert('Enter a valid bet amount.');
+          return;
+        }
+        // Disable input & start
+        betInput.disabled = true;
+        placeBetBtn.disabled = true;
+        cashOutBtn.classList.remove('hidden');
+
+        // Determine random crash point between 1.5 and 10.0
+        crashPoint = (Math.random() * 8.5 + 1.5).toFixed(2);
+        currentMult = 1.00;
+        multiplierEl.textContent = '×1.00';
+
+        function tick() {
+          // Increase multiplier by ~0.02 per tick
+          currentMult += 0.02;
+          multiplierEl.textContent = '×' + currentMult.toFixed(2);
+
+          if (currentMult >= crashPoint) {
+            // Crash!
+            cancelAnimationFrame(animationId);
+            endRound(false);
+          } else {
+            animationId = requestAnimationFrame(tick);
+          }
+        }
+        animationId = requestAnimationFrame(tick);
+      }
+
+      function endRound(cashedOut) {
+        cashOutBtn.classList.add('hidden');
+        betInput.disabled = false;
+        placeBetBtn.disabled = false;
+
+        if (cashedOut) {
+          const payout = (parseFloat(betInput.value) * parseFloat(currentMult)).toFixed(2);
+          alert(`You cashed out at ×${currentMult.toFixed(2)}! You win R${payout}.`);
+        } else {
+          alert(`Crashed at ×${crashPoint}! You lost your bet.`);
+        }
+      }
+
+      placeBetBtn.addEventListener('click', startRound);
+      cashOutBtn.addEventListener('click', () => {
+        cancelAnimationFrame(animationId);
+        endRound(true);
+      });
+    })();
   </script>
 
 </body>
