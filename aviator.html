@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PakBet — Aviator</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    #plane {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100px;
+      height: auto;
+      transform: translateY(-50%);
+      transition: transform 0.1s linear;
+      z-index: 10;
+    }
+    .plane-wrapper {
+      position: relative;
+      height: 150px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
@@ -30,12 +48,14 @@
       Place your bet and watch the multiplier rise—cash out before the plane flies away!
     </p>
 
-    <!-- Aviator Game Placeholder -->
-    <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
-      <div id="aviator-game" class="mb-6">
-        <p class="text-gray-400 text-5xl" id="multiplier">×1.00</p>
+    <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block w-full">
+      <div class="plane-wrapper">
+        <img id="plane" src="assets/aviator/aviator.png" alt="Aviator Plane" />
       </div>
-      <div class="flex space-x-4 justify-center">
+
+      <p class="text-gray-400 text-5xl mb-6" id="multiplier">×1.00</p>
+
+      <div class="flex space-x-4 justify-center mb-6">
         <input
           id="betAmount"
           type="number"
@@ -49,8 +69,7 @@
           Cash Out
         </button>
       </div>
-      <!-- Result Display -->
-      <div id="result" class="mt-6 text-lg font-semibold"></div>
+      <div id="result" class="text-lg font-semibold"></div>
     </div>
   </main>
 
@@ -59,7 +78,7 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase SDK Script -->
+  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
@@ -78,7 +97,7 @@
     const analytics = getAnalytics(app);
   </script>
 
-  <!-- Aviator Game Logic -->
+  <!-- Aviator Logic -->
   <script>
     (function() {
       const placeBetBtn = document.getElementById('placeBet');
@@ -86,7 +105,9 @@
       const multiplierEl= document.getElementById('multiplier');
       const betInput    = document.getElementById('betAmount');
       const resultEl    = document.getElementById('result');
-      let animationId, crashPoint, currentMult;
+      const plane       = document.getElementById('plane');
+
+      let animationId, crashPoint, currentMult, position;
 
       function startRound() {
         const bet = parseFloat(betInput.value);
@@ -94,23 +115,25 @@
           resultEl.textContent = 'Enter a valid bet amount.';
           return;
         }
-        // Reset result
+
         resultEl.textContent = '';
-        // Disable input & start
         betInput.disabled = true;
         placeBetBtn.disabled = true;
         cashOutBtn.classList.remove('hidden');
 
-        // Determine random crash point between 1.5 and 10.0
         crashPoint = (Math.random() * 8.5 + 1.5).toFixed(2);
         currentMult = 1.00;
+        position = 0;
         multiplierEl.textContent = '×1.00';
+        plane.style.transform = `translate(0px, -50%)`;
 
         function tick() {
           currentMult += 0.02;
+          position += 4; // Move 4px per tick
           multiplierEl.textContent = '×' + currentMult.toFixed(2);
+          plane.style.transform = `translate(${position}px, -50%)`;
 
-          if (currentMult >= crashPoint) {
+          if (currentMult >= crashPoint || position >= window.innerWidth) {
             cancelAnimationFrame(animationId);
             endRound(false);
           } else {
@@ -127,9 +150,9 @@
 
         if (cashedOut) {
           const payout = (parseFloat(betInput.value) * currentMult).toFixed(2);
-          resultEl.textContent = `You cashed out at ×${currentMult.toFixed(2)} and won R${payout}.`;
+          resultEl.textContent = `🤑 Cashed out at ×${currentMult.toFixed(2)} and won R${payout}`;
         } else {
-          resultEl.textContent = `Crashed at ×${crashPoint}. You lost your bet.`;
+          resultEl.textContent = `💥 Crashed at ×${crashPoint}. You lost your bet.`;
         }
       }
 
