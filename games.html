@@ -68,11 +68,11 @@
 
   <!-- Firebase SDK & Enhanced Logic -->
   <script type="module">
-    import { initializeApp }         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { initializeApp }          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import {
       getFirestore,
-      doc, getDoc,
+      doc, getDoc, setDoc, serverTimestamp,
       collection, query, orderBy, limit, getDocs
     }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
@@ -86,48 +86,72 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+
+    // Initialize Firebase
     const app  = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
+    // UI refs
     const navControls = document.getElementById('nav-controls');
     const loginLink   = document.getElementById('loginLink');
     const alertBanner = document.getElementById('alertBanner');
     const greeting    = document.getElementById('greeting');
 
-    // Fetch latest admin alert
+    // Show latest admin alert
     async function loadLatestAlert() {
-      const q = query(collection(db, 'alerts'), orderBy('timestamp','desc'), limit(1));
+      const q = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
       const snap = await getDocs(q);
       if (!snap.empty) {
-        const msg = snap.docs[0].data().message;
-        alertBanner.textContent = msg;
+        alertBanner.textContent = snap.docs[0].data().message;
         alertBanner.classList.remove('hidden');
       }
     }
 
+    // Auto-seed user & wallet
+    async function seedUser(uid, email, name) {
+      const userRef = doc(db,'users',uid);
+      if (!(await getDoc(userRef)).exists()) {
+        await setDoc(userRef, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      const walletRef = doc(db,'wallets',uid);
+      if (!(await getDoc(walletRef)).exists()) {
+        await setDoc(walletRef, {
+          balance: 0,
+          lastUpdated: serverTimestamp()
+        });
+      }
+    }
+
+    // React to Auth changes
     onAuthStateChanged(auth, async user => {
-      loginLink.remove();
-      // Always load alerts
+      // always load alerts
       await loadLatestAlert();
 
-      if (user && (user.emailVerified || user.providerData[0].providerId === "google.com")) {
-        // fetch wallet balance
-        const walletRef  = doc(db, 'wallets', user.uid);
-        const walletSnap = await getDoc(walletRef);
-        const balance    = walletSnap.exists() ? walletSnap.data().balance.toFixed(2) : '0.00';
+      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
+        // seed Firestore
+        await seedUser(user.uid, user.email, user.displayName);
 
-        // Greeting
+        // remove login link
+        loginLink.remove();
+
+        // fetch and show balance
+        const wSnap = await getDoc(doc(db,'wallets', user.uid));
+        const balance = wSnap.exists() ? wSnap.data().balance.toFixed(2) : '0.00';
         greeting.textContent = `Welcome back, ${user.displayName || 'Player'}! Your balance is R${balance}.`;
 
-        // Profile Dropdown
+        // build profile dropdown
         const container = document.createElement('div');
         container.className = 'relative';
-
-        const userBtn = document.createElement('button');
-        userBtn.textContent = user.displayName || 'Profile';
-        userBtn.className = 'text-green-400 hover:text-green-200 focus:outline-none';
-        container.appendChild(userBtn);
+        const btn = document.createElement('button');
+        btn.textContent = user.displayName || 'Profile';
+        btn.className = 'text-green-400 hover:text-green-200 focus:outline-none';
+        container.appendChild(btn);
 
         const menu = document.createElement('div');
         menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
@@ -138,20 +162,15 @@
         `;
         container.appendChild(menu);
 
-        userBtn.addEventListener('click', () => menu.classList.toggle('hidden'));
+        btn.addEventListener('click', () => menu.classList.toggle('hidden'));
         menu.querySelector('#logoutBtn').addEventListener('click', async () => {
           await signOut(auth);
           window.location.href = 'auth.html';
         });
 
         navControls.appendChild(container);
-      } else {
-        const a = document.createElement('a');
-        a.href = 'auth.html';
-        a.className = 'hover:text-green-400';
-        a.textContent = 'Login';
-        navControls.appendChild(a);
       }
+      // otherwise leave the Login link in place
     });
   </script>
 </body>
