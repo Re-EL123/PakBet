@@ -33,7 +33,6 @@
     <!-- Aviator Game Placeholder -->
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <div id="aviator-game" class="mb-6">
-        <!-- Canvas or game UI loads here -->
         <p class="text-gray-400 text-5xl" id="multiplier">×1.00</p>
       </div>
       <div class="flex space-x-4 justify-center">
@@ -50,6 +49,8 @@
           Cash Out
         </button>
       </div>
+      <!-- Result Display -->
+      <div id="result" class="mt-6 text-lg font-semibold"></div>
     </div>
   </main>
 
@@ -84,14 +85,17 @@
       const cashOutBtn  = document.getElementById('cashOut');
       const multiplierEl= document.getElementById('multiplier');
       const betInput    = document.getElementById('betAmount');
+      const resultEl    = document.getElementById('result');
       let animationId, crashPoint, currentMult;
 
       function startRound() {
         const bet = parseFloat(betInput.value);
         if (!bet || bet <= 0) {
-          alert('Enter a valid bet amount.');
+          resultEl.textContent = 'Enter a valid bet amount.';
           return;
         }
+        // Reset result
+        resultEl.textContent = '';
         // Disable input & start
         betInput.disabled = true;
         placeBetBtn.disabled = true;
@@ -103,12 +107,10 @@
         multiplierEl.textContent = '×1.00';
 
         function tick() {
-          // Increase multiplier by ~0.02 per tick
           currentMult += 0.02;
           multiplierEl.textContent = '×' + currentMult.toFixed(2);
 
           if (currentMult >= crashPoint) {
-            // Crash!
             cancelAnimationFrame(animationId);
             endRound(false);
           } else {
@@ -124,10 +126,10 @@
         placeBetBtn.disabled = false;
 
         if (cashedOut) {
-          const payout = (parseFloat(betInput.value) * parseFloat(currentMult)).toFixed(2);
-          alert(`You cashed out at ×${currentMult.toFixed(2)}! You win R${payout}.`);
+          const payout = (parseFloat(betInput.value) * currentMult).toFixed(2);
+          resultEl.textContent = `You cashed out at ×${currentMult.toFixed(2)} and won R${payout}.`;
         } else {
-          alert(`Crashed at ×${crashPoint}! You lost your bet.`);
+          resultEl.textContent = `Crashed at ×${crashPoint}. You lost your bet.`;
         }
       }
 
