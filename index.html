@@ -12,19 +12,21 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <h1 class="text-2xl font-bold text-green-500">PakBet</h1>
-      <div class="space-x-6">
+      <div class="space-x-6 flex items-center" id="nav-controls">
         <a href="#" class="hover:text-green-400">Home</a>
         <a href="#" class="hover:text-green-400">Games</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
+        <a href="auth.html" id="loginLink" class="hover:text-green-400">Login</a>
       </div>
     </div>
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
   <!-- Hero Section -->
   <section class="text-center py-20 bg-gradient-to-br from-green-600 to-black">
     <h2 class="text-4xl md:text-5xl font-extrabold mb-4">Welcome to PakBet</h2>
     <p class="text-lg md:text-xl text-gray-200 mb-8">Your ultimate destination for smart, fast and fun betting.</p>
-    <a href="auth.html" class="px-6 py-3 bg-white text-green-700 font-bold rounded-full hover:bg-gray-200">Get Started</a>
+    <a href="auth.html" id="ctaButton" class="px-6 py-3 bg-white text-green-700 font-bold rounded-full hover:bg-gray-200">Get Started</a>
   </section>
 
   <!-- Game Categories -->
@@ -52,11 +54,29 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet. All rights reserved.</p>
   </footer>
 
-  <!-- Firebase SDK Script -->
+  <!-- Firebase + Auto-Seeding + Auth + Dynamic Nav + Redirect -->
   <script type="module">
-    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp }           from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics }            from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut
+    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      query,
+      orderBy,
+      limit,
+      getDocs
+    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+    // --- Firebase Initialization ---
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
@@ -66,10 +86,71 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+    const app  = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+    // UI Elements
+    const navControls = document.getElementById('nav-controls');
+    const loginLink   = document.getElementById('loginLink');
+    const alertBanner = document.getElementById('alertBanner');
+    const ctaButton   = document.getElementById('ctaButton');
+
+    // Fetch latest admin alert
+    async function loadLatestAlert() {
+      const q = query(collection(db, 'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    // Seed user & wallet if needed
+    async function seedUser(uid, email, name) {
+      const uref = doc(db, 'users', uid);
+      const usnap = await getDoc(uref);
+      if (!usnap.exists()) {
+        await setDoc(uref, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      const wref = doc(db, 'wallets', uid);
+      const wsnap = await getDoc(wref);
+      if (!wsnap.exists()) {
+        await setDoc(wref, {
+          balance: 0,
+          lastUpdated: serverTimestamp()
+        });
+      }
+    }
+
+    // Handle Auth State
+    onAuthStateChanged(auth, async user => {
+      // Always load alerts
+      await loadLatestAlert();
+
+      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
+        // Seed Firestore docs
+        await seedUser(user.uid, user.email, user.displayName);
+
+        // Redirect to dashboard
+        return window.location.href = 'dashboard.html';
+      } else {
+        // Not signed in: show Login link, ensure CTA points to auth.html
+        loginLink.remove();
+        const a = document.createElement('a');
+        a.href = 'auth.html';
+        a.textContent = 'Login';
+        a.className = 'hover:text-green-400';
+        navControls.appendChild(a);
+        ctaButton.href = 'auth.html';
+      }
+    });
   </script>
-
 </body>
 </html>
