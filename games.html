@@ -12,53 +12,52 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6">
+      <div class="space-x-6 flex items-center" id="nav-controls">
         <a href="index.html" class="hover:text-green-400">Home</a>
         <a href="games.html" class="text-green-400 border-b-2 border-green-400">Games</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
+        <!-- login/user placeholder -->
+        <a href="auth.html" id="loginLink" class="hover:text-green-400">Login</a>
       </div>
     </div>
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
   <!-- Main Content -->
   <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
+    <!-- Greeting -->
+    <div id="greeting" class="text-center mb-8 text-xl text-gray-300"></div>
+
     <h1 class="text-4xl font-extrabold text-center mb-10">Choose Your Game</h1>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-
       <!-- Soccer -->
-      <a href="soccer.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+      <a href="soccer.html"
+         class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:scale-105 transform transition cursor-pointer">
         <h2 class="text-2xl font-bold text-green-400 mb-2">Soccer</h2>
         <p class="text-gray-300">Bet on local and international football matches.</p>
       </a>
 
       <!-- Aviator -->
-      <a href="aviator.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+      <a href="aviator.html"
+         class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:scale-105 transform transition cursor-pointer">
         <h2 class="text-2xl font-bold text-green-400 mb-2">Aviator</h2>
         <p class="text-gray-300">Place a bet and cash out before the plane flies!</p>
       </a>
 
       <!-- Cricket -->
-      <a href="cricket.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+      <a href="cricket.html"
+         class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:scale-105 transform transition cursor-pointer">
         <h2 class="text-2xl font-bold text-green-400 mb-2">Cricket</h2>
         <p class="text-gray-300">Wager on T20s, ODIs, and test matches.</p>
       </a>
 
       <!-- Casino -->
-      <a href="casino.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
+      <a href="casino.html"
+         class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:scale-105 transform transition cursor-pointer">
         <h2 class="text-2xl font-bold text-green-400 mb-2">Casino</h2>
         <p class="text-gray-300">Enjoy slots, roulette, blackjack, and more.</p>
       </a>
-
-      <!-- Add more games here -->
-      <!-- Example: -->
-      <!--
-      <a href="esports.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition duration-300">
-        <h2 class="text-2xl font-bold text-green-400 mb-2">eSports</h2>
-        <p class="text-gray-300">Bet on CS:GO, Dota 2, and more tournaments.</p>
-      </a>
-      -->
-
     </div>
   </main>
 
@@ -67,11 +66,17 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase SDK Script -->
+  <!-- Firebase SDK & Enhanced Logic -->
   <script type="module">
-    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp }         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc, getDoc,
+      collection, query, orderBy, limit, getDocs
+    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+    // Your existing Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
@@ -81,10 +86,73 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+    const navControls = document.getElementById('nav-controls');
+    const loginLink   = document.getElementById('loginLink');
+    const alertBanner = document.getElementById('alertBanner');
+    const greeting    = document.getElementById('greeting');
+
+    // Fetch latest admin alert
+    async function loadLatestAlert() {
+      const q = query(collection(db, 'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const msg = snap.docs[0].data().message;
+        alertBanner.textContent = msg;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    onAuthStateChanged(auth, async user => {
+      loginLink.remove();
+      // Always load alerts
+      await loadLatestAlert();
+
+      if (user && (user.emailVerified || user.providerData[0].providerId === "google.com")) {
+        // fetch wallet balance
+        const walletRef  = doc(db, 'wallets', user.uid);
+        const walletSnap = await getDoc(walletRef);
+        const balance    = walletSnap.exists() ? walletSnap.data().balance.toFixed(2) : '0.00';
+
+        // Greeting
+        greeting.textContent = `Welcome back, ${user.displayName || 'Player'}! Your balance is R${balance}.`;
+
+        // Profile Dropdown
+        const container = document.createElement('div');
+        container.className = 'relative';
+
+        const userBtn = document.createElement('button');
+        userBtn.textContent = user.displayName || 'Profile';
+        userBtn.className = 'text-green-400 hover:text-green-200 focus:outline-none';
+        container.appendChild(userBtn);
+
+        const menu = document.createElement('div');
+        menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
+        menu.innerHTML = `
+          <a href="dashboard.html" class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
+          <a href="wallet.html"    class="block px-4 py-2 hover:bg-gray-700">Wallet</a>
+          <button id="logoutBtn"   class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
+        `;
+        container.appendChild(menu);
+
+        userBtn.addEventListener('click', () => menu.classList.toggle('hidden'));
+        menu.querySelector('#logoutBtn').addEventListener('click', async () => {
+          await signOut(auth);
+          window.location.href = 'auth.html';
+        });
+
+        navControls.appendChild(container);
+      } else {
+        const a = document.createElement('a');
+        a.href = 'auth.html';
+        a.className = 'hover:text-green-400';
+        a.textContent = 'Login';
+        navControls.appendChild(a);
+      }
+    });
   </script>
-
 </body>
 </html>
