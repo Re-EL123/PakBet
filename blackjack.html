@@ -12,13 +12,13 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6">
+      <div class="space-x-6" id="navbar-links">
         <a href="index.html" class="hover:text-green-400">Home</a>
         <a href="soccer.html" class="hover:text-green-400">Soccer</a>
         <a href="aviator.html" class="hover:text-green-400">Aviator</a>
         <a href="cricket.html" class="hover:text-green-400">Cricket</a>
         <a href="casino.html" class="hover:text-green-400">Casino</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
+        <a href="auth.html" id="auth-link" class="hover:text-green-400">Login</a>
       </div>
     </div>
   </nav>
@@ -35,17 +35,13 @@
       <!-- Dealer Hand -->
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Dealer’s Hand (<span id="dealer-score">0</span>)</h2>
-        <div id="dealer-cards" class="flex space-x-2">
-          <!-- e.g. <img src="assets/cards/ace_of_spades.png" alt="A♠" class="w-20 h-28"> -->
-        </div>
+        <div id="dealer-cards" class="flex space-x-2"></div>
       </div>
 
       <!-- Player Hand -->
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Your Hand (<span id="player-score">0</span>)</h2>
-        <div id="player-cards" class="flex space-x-2">
-          <!-- e.g. <img src="assets/cards/king_of_hearts.png" alt="K♥" class="w-20 h-28"> -->
-        </div>
+        <div id="player-cards" class="flex space-x-2"></div>
       </div>
 
       <!-- Controls -->
@@ -71,16 +67,18 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase SDK Script -->
+  <!-- Firebase Auth Script (Optional) -->
   <script type="module">
-    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
-      storageBucket: "pakbet-b0abe.firebasestorage.app",
+      storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
@@ -88,16 +86,28 @@
 
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const uid = user.uid;
+        const userDoc = await getDoc(doc(db, "users", uid));
+        const userData = userDoc.exists() ? userDoc.data() : { name: "Player", balance: 0 };
+
+        const authLink = document.getElementById("auth-link");
+        authLink.outerHTML = `<span class="text-green-400">💰 ${userData.name} — $${userData.balance}</span>`;
+      }
+    });
   </script>
 
   <!-- Blackjack Game Logic -->
   <script>
-    (function() {
-      const suits = ['hearts','diamonds','clubs','spades'];
-      const ranks = ['2','3','4','5','6','7','8','9','10','jack','queen','king','ace'];
+    (function () {
+      const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
       let deck = [], dealerHand = [], playerHand = [];
 
-      // DOM Elements
       const dealerCardsEl = document.getElementById('dealer-cards');
       const playerCardsEl = document.getElementById('player-cards');
       const dealerScoreEl = document.getElementById('dealer-score');
@@ -107,7 +117,6 @@
       const btnStand = document.getElementById('btnStand');
       const resultEl = document.getElementById('bj-result');
 
-      // Build & shuffle deck
       function buildDeck() {
         deck = [];
         suits.forEach(suit => {
@@ -118,11 +127,10 @@
         deck.sort(() => Math.random() - 0.5);
       }
 
-      // Calculate hand score (aces as 11 or 1)
       function calcScore(hand) {
         let score = 0, aces = 0;
         hand.forEach(card => {
-          if (['jack','queen','king'].includes(card.rank)) score += 10;
+          if (['jack', 'queen', 'king'].includes(card.rank)) score += 10;
           else if (card.rank === 'ace') { score += 11; aces++; }
           else score += Number(card.rank);
         });
@@ -132,12 +140,11 @@
         return score;
       }
 
-      // Render hand images & score
       function renderHand(hand, containerEl, scoreEl) {
         containerEl.innerHTML = '';
         hand.forEach(card => {
           const img = document.createElement('img');
-          img.src = `assets/cards/${card.rank}_of_${card.suit}.png`;
+          img.src = `assets/playing_cards/${card.rank}_of_${card.suit}.png`;
           img.alt = `${card.rank} of ${card.suit}`;
           img.className = 'w-20 h-28';
           containerEl.appendChild(img);
@@ -145,11 +152,10 @@
         scoreEl.textContent = calcScore(hand);
       }
 
-      // Deal initial cards
       function deal() {
         buildDeck();
-        dealerHand = [ deck.pop(), deck.pop() ];
-        playerHand = [ deck.pop(), deck.pop() ];
+        dealerHand = [deck.pop(), deck.pop()];
+        playerHand = [deck.pop(), deck.pop()];
         resultEl.textContent = '';
         renderHand(dealerHand, dealerCardsEl, dealerScoreEl);
         renderHand(playerHand, playerCardsEl, playerScoreEl);
@@ -157,17 +163,14 @@
         btnStand.disabled = false;
       }
 
-      // Player hits
       btnHit.addEventListener('click', () => {
         playerHand.push(deck.pop());
         renderHand(playerHand, playerCardsEl, playerScoreEl);
         if (calcScore(playerHand) > 21) endRound();
       });
 
-      // Player stands
       btnStand.addEventListener('click', () => endRound(true));
 
-      // End round logic
       function endRound(playerStood = false) {
         btnHit.disabled = true;
         btnStand.disabled = true;
