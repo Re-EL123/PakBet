@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Withdraw — PakBet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center h-screen">
+
+  <div class="bg-gray-800 p-8 rounded shadow-md w-96 text-center">
+    <h1 class="text-2xl font-bold mb-4">Withdraw Funds</h1>
+    <input id="withdrawAmount" type="number" placeholder="Enter amount" class="w-full p-2 mb-4 rounded bg-gray-700 text-white" />
+    <button id="withdrawBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 py-2 rounded font-bold">Withdraw</button>
+    <p id="status" class="mt-4 text-sm text-gray-400"></p>
+  </div>
+
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+
+    const status = document.getElementById('status');
+    const withdrawBtn = document.getElementById('withdrawBtn');
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        status.textContent = "You must be logged in.";
+        withdrawBtn.disabled = true;
+        return;
+      }
+
+      withdrawBtn.addEventListener('click', async () => {
+        const amount = parseFloat(document.getElementById('withdrawAmount').value);
+        if (isNaN(amount) || amount <= 0) {
+          status.textContent = "Enter a valid amount.";
+          return;
+        }
+
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          status.textContent = "No account found.";
+          return;
+        }
+
+        const currentBalance = userSnap.data().balance || 0;
+        if (amount > currentBalance) {
+          status.textContent = "Insufficient funds.";
+          return;
+        }
+
+        await updateDoc(userRef, { balance: currentBalance - amount });
+        status.textContent = `Successfully withdrew R${amount.toFixed(2)}.`;
+      });
+    });
+  </script>
+</body>
+</html>
