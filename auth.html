@@ -61,6 +61,12 @@
       onAuthStateChanged,
       signOut
     }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      setDoc,
+      serverTimestamp
+    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -74,6 +80,7 @@
     const app   = initializeApp(firebaseConfig);
     getAnalytics(app);
     const auth  = getAuth(app);
+    const db    = getFirestore(app);
 
     const loginTab    = document.getElementById('loginTab');
     const signupTab   = document.getElementById('signupTab');
@@ -81,6 +88,7 @@
     const signupForm  = document.getElementById('signupForm');
     const resendBtn   = document.getElementById('resendVerification');
 
+    // Tab switching
     loginTab.addEventListener('click', () => {
       loginForm.classList.remove('hidden');
       signupForm.classList.add('hidden');
@@ -102,8 +110,23 @@
       const password = document.getElementById('signupPassword').value;
       try {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCred.user, { displayName: name });
-        await sendEmailVerification(userCred.user);
+        const user     = userCred.user;
+        // 1) Set displayName
+        await updateProfile(user, { displayName: name });
+        // 2) Seed Firestore: users/{uid}
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          username: name,
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        }, { merge: true });
+        // 3) Seed Firestore: wallets/{uid}
+        await setDoc(doc(db, "wallets", user.uid), {
+          balance: 0,
+          lastUpdated: serverTimestamp()
+        }, { merge: true });
+        // 4) Send verification & redirect
+        await sendEmailVerification(user);
         alert('Verification email sent. Please check your inbox before logging in.');
         await signOut(auth);
         loginTab.click();
@@ -132,7 +155,7 @@
       }
     });
 
-    // Resend Verification from login form
+    // Resend Verification
     resendBtn.addEventListener('click', async () => {
       const user = auth.currentUser;
       if (user && !user.emailVerified) {
@@ -141,7 +164,7 @@
       }
     });
 
-    // Google Sign-In (bypasses email verification)
+    // Google Sign-In (if needed)
     const googleProvider = new GoogleAuthProvider();
     document.getElementById('googleSignIn')?.addEventListener('click', async () => {
       try {
@@ -151,8 +174,6 @@
         alert(err.message);
       }
     });
-
-    // Phone Auth setup omitted for brevity…
 
     // Redirect if already logged in & verified
     onAuthStateChanged(auth, user => {
