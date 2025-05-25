@@ -12,7 +12,7 @@
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6" id="navbar-links">
+      <div class="space-x-6 flex items-center" id="navbar-links">
         <a href="index.html" class="hover:text-green-400">Home</a>
         <a href="soccer.html" class="hover:text-green-400">Soccer</a>
         <a href="aviator.html" class="hover:text-green-400">Aviator</a>
@@ -21,10 +21,15 @@
         <a href="auth.html" id="auth-link" class="hover:text-green-400">Login</a>
       </div>
     </div>
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
   <!-- Page Content -->
-  <main class="flex-grow max-w-4xl mx-auto px-4 py-12">
+  <main class="flex-grow max-w-4xl mx-auto px-4 py-12 space-y-6">
+    <!-- Greeting -->
+    <div id="greeting" class="text-center text-lg text-gray-300"></div>
+
     <h1 class="text-4xl font-extrabold mb-6 text-center">Blackjack</h1>
     <p class="text-gray-300 mb-8 text-center">
       Try to get as close to 21 as possible without going over. Aces count as 1 or 11.
@@ -67,13 +72,18 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase Auth Script (Optional) -->
+  <!-- Firebase & User Integration -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { initializeApp }            from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics }             from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc, getDoc, setDoc, serverTimestamp,
+      collection, query, orderBy, limit, getDocs
+    }                                   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+    // Your Firebase config (unchanged)
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
@@ -83,20 +93,97 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+    const app  = initializeApp(firebaseConfig);
+    getAnalytics(app);
     const auth = getAuth(app);
-    const db = getFirestore(app);
+    const db   = getFirestore(app);
 
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const uid = user.uid;
-        const userDoc = await getDoc(doc(db, "users", uid));
-        const userData = userDoc.exists() ? userDoc.data() : { name: "Player", balance: 0 };
+    const navbarLinks = document.getElementById('navbar-links');
+    const authLink    = document.getElementById('auth-link');
+    const alertBanner = document.getElementById('alertBanner');
+    const greeting    = document.getElementById('greeting');
 
-        const authLink = document.getElementById("auth-link");
-        authLink.outerHTML = `<span class="text-green-400">💰 ${userData.name} — $${userData.balance}</span>`;
+    // Fetch latest admin alert
+    async function loadLatestAlert() {
+      const q = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    // Auto-seed user & wallet
+    async function seedUserAndWallet(uid, email, name) {
+      const uref = doc(db,'users',uid);
+      if (!(await getDoc(uref)).exists()) {
+        await setDoc(uref, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      const wref = doc(db,'wallets',uid);
+      if (!(await getDoc(wref)).exists()) {
+        await setDoc(wref, {
+          balance: 0,
+          lastUpdated: serverTimestamp()
+        });
+      }
+    }
+
+    onAuthStateChanged(auth, async user => {
+      // always load alerts
+      await loadLatestAlert();
+
+      // remove default auth link
+      authLink.remove();
+
+      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
+        // seed Firestore
+        await seedUserAndWallet(user.uid, user.email, user.displayName);
+
+        // fetch wallet balance
+        const wSnap = await getDoc(doc(db,'wallets',user.uid));
+        const bal   = wSnap.exists() ? wSnap.data().balance.toFixed(2) : '0.00';
+
+        // greeting
+        greeting.textContent = `Welcome, ${user.displayName || 'Player'}! Balance: R${bal}`;
+
+        // build Profile dropdown
+        const container = document.createElement('div');
+        container.className = 'relative inline-block';
+
+        const btn = document.createElement('button');
+        btn.textContent = user.displayName || 'Profile';
+        btn.className = 'text-green-400 hover:text-green-200';
+        container.appendChild(btn);
+
+        const menu = document.createElement('div');
+        menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
+        menu.innerHTML = `
+          <a href="dashboard.html"    class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
+          <a href="wallet.html"       class="block px-4 py-2 hover:bg-gray-700">Wallet</a>
+          <a href="casino.html"       class="block px-4 py-2 hover:bg-gray-700">Casino</a>
+          <button id="logoutBtn"      class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
+        `;
+        container.appendChild(menu);
+
+        btn.addEventListener('click', ()=> menu.classList.toggle('hidden'));
+        menu.querySelector('#logoutBtn').addEventListener('click', async ()=>{
+          await signOut(auth);
+          window.location.href = 'auth.html';
+        });
+
+        navbarLinks.appendChild(container);
+      } else {
+        // not logged in → show simple Login link
+        const a = document.createElement('a');
+        a.href = 'auth.html';
+        a.className = 'hover:text-green-400';
+        a.textContent = 'Login';
+        navbarLinks.appendChild(a);
       }
     });
   </script>
