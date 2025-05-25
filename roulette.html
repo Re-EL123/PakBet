@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Roulette</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
+      <div class="space-x-6">
+        <a href="index.html" class="hover:text-green-400">Home</a>
+        <a href="soccer.html" class="hover:text-green-400">Soccer</a>
+        <a href="aviator.html" class="hover:text-green-400">Aviator</a>
+        <a href="cricket.html" class="hover:text-green-400">Cricket</a>
+        <a href="casino.html" class="hover:text-green-400">Casino</a>
+        <a href="auth.html" class="hover:text-green-400">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  <main class="flex-grow max-w-4xl mx-auto px-4 py-12 text-center">
+    <h1 class="text-4xl font-extrabold mb-6">Roulette</h1>
+    <p class="text-gray-300 mb-8">
+      Place your bet on a number (0–36), then spin the wheel!
+    </p>
+
+    <!-- Roulette Area -->
+    <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
+      <!-- Wheel Placeholder -->
+      <div class="mb-6">
+        <img id="roulette-wheel" src="assets/images/roulette_wheel.png" alt="Roulette Wheel" class="w-64 h-64 mx-auto"/>
+      </div>
+
+      <!-- Bet Controls -->
+      <div class="flex flex-col sm:flex-row sm:space-x-4 items-center justify-center mb-6">
+        <input
+          id="betNumber"
+          type="number"
+          min="0"
+          max="36"
+          placeholder="0–36"
+          class="w-24 p-2 mb-4 sm:mb-0 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        <button id="spinBtn" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600">
+          Spin
+        </button>
+      </div>
+
+      <!-- Result Display -->
+      <div id="roulette-result" class="text-xl font-semibold"></div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+  <!-- Firebase SDK Script -->
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.firebasestorage.app",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+  </script>
+
+  <!-- Roulette Logic -->
+  <script>
+    (function() {
+      const spinBtn = document.getElementById('spinBtn');
+      const wheel   = document.getElementById('roulette-wheel');
+      const betInput= document.getElementById('betNumber');
+      const resultEl= document.getElementById('roulette-result');
+
+      function spinWheel() {
+        const bet = parseInt(betInput.value, 10);
+        if (isNaN(bet) || bet < 0 || bet > 36) {
+          resultEl.textContent = 'Enter a number between 0 and 36.';
+          return;
+        }
+        spinBtn.disabled = true;
+        resultEl.textContent = '';
+
+        // Random result 0–36
+        const outcome = Math.floor(Math.random() * 37);
+        // Spin animation: rotate random full spins + target position
+        const spins = 5;
+        const degreePerSlot = 360 / 37;
+        const rotateTo = 360 * spins + (37 - outcome) * degreePerSlot;
+        wheel.style.transition = 'transform 4s ease-out';
+        wheel.style.transform = `rotate(${rotateTo}deg)`;
+
+        wheel.addEventListener('transitionend', () => {
+          // Clean up
+          wheel.style.transition = '';
+          wheel.style.transform = '';
+          spinBtn.disabled = false;
+          // Display
+          if (outcome === bet) {
+            resultEl.textContent = `🎉 You won! The ball landed on ${outcome}.`;
+          } else {
+            resultEl.textContent = `💔 You lost. The ball landed on ${outcome}.`;
+          }
+        }, { once: true });
+      }
+
+      spinBtn.addEventListener('click', spinWheel);
+    })();
+  </script>
+
+</body>
+</html>
