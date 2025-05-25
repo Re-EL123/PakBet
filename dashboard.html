@@ -19,13 +19,26 @@
   </nav>
 
   <!-- Content -->
-  <main class="flex-grow max-w-3xl mx-auto px-4 py-12">
-    <h1 class="text-4xl font-extrabold mb-8 text-center">Your Account</h1>
+  <main class="flex-grow max-w-3xl mx-auto px-4 py-12 space-y-8">
+    <h1 class="text-4xl font-extrabold text-center">Your Account</h1>
+
+    <!-- Profile & Wallet -->
     <div class="bg-gray-800 p-6 rounded-xl space-y-4">
       <p><span class="font-semibold">Full Name:</span> <span id="userName">Loading…</span></p>
       <p><span class="font-semibold">Email:</span> <span id="userEmail">Loading…</span></p>
       <p><span class="font-semibold">User ID:</span> <span id="userUID">Loading…</span></p>
+      <p><span class="font-semibold">Wallet Balance:</span> R<span id="userBalance">Loading…</span></p>
     </div>
+
+    <!-- Recent Transactions -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-4 text-green-400">Recent Transactions</h2>
+      <ul id="transactionsList" class="bg-gray-800 p-4 rounded-xl space-y-2">
+        <li>Loading transactions…</li>
+      </ul>
+    </section>
+
+    <!-- Quick Links -->
     <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-6">
       <a href="wallet.html" class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition">
         <h2 class="text-2xl font-bold text-green-400 mb-2">Wallet</h2>
@@ -38,14 +51,28 @@
     </div>
   </main>
 
+  <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
+    &copy; 2025 PakBet
+  </footer>
+
+  <!-- Firebase SDK & Logic -->
   <script type="module">
-    import { initializeApp }           from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }           from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp }                          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics }                          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged, signOut }  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import {
-      getAuth,
-      onAuthStateChanged,
-      signOut
-    }                                  from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      serverTimestamp,
+      collection,
+      query,
+      where,
+      orderBy,
+      limit,
+      getDocs
+    }                                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -56,23 +83,69 @@
       appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-    const app   = initializeApp(firebaseConfig);
+    const app    = initializeApp(firebaseConfig);
     getAnalytics(app);
-    const auth  = getAuth(app);
+    const auth   = getAuth(app);
+    const db     = getFirestore(app);
 
-    onAuthStateChanged(auth, user => {
-      if (user && user.emailVerified) {
-        document.getElementById('userName').textContent  = user.displayName || '–';
-        document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('userUID').textContent   = user.uid;
+    // UI Elements
+    const elName    = document.getElementById('userName');
+    const elEmail   = document.getElementById('userEmail');
+    const elUID     = document.getElementById('userUID');
+    const elBalance = document.getElementById('userBalance');
+    const txList    = document.getElementById('transactionsList');
+
+    // On Auth State Changed
+    onAuthStateChanged(auth, async user => {
+      if (!user || !user.emailVerified) {
+        await signOut(auth);
+        return window.location.href = 'auth.html';
+      }
+
+      // Profile
+      elName.textContent = user.displayName || '–';
+      elEmail.textContent = user.email;
+      elUID.textContent = user.uid;
+
+      // 1) Ensure wallet doc exists
+      const walletRef = doc(db, 'wallets', user.uid);
+      const walletSnap = await getDoc(walletRef);
+      if (!walletSnap.exists()) {
+        await setDoc(walletRef, { balance: 0, lastUpdated: serverTimestamp() });
+      }
+
+      // 2) Display balance
+      const balance = (await getDoc(walletRef)).data().balance.toFixed(2);
+      elBalance.textContent = balance;
+
+      // 3) Load last 5 transactions
+      const txQuery = query(
+        collection(db, 'transactions'),
+        where('uid', '==', user.uid),
+        orderBy('timestamp', 'desc'),
+        limit(5)
+      );
+      const txSnapshot = await getDocs(txQuery);
+
+      txList.innerHTML = '';
+      if (txSnapshot.empty) {
+        txList.innerHTML = '<li>No transactions yet.</li>';
       } else {
-        // Not signed in or not verified → back to auth
-        signOut(auth).then(() => {
-          window.location.href = 'auth.html';
+        txSnapshot.forEach(docSnap => {
+          const { type, amount, timestamp } = docSnap.data();
+          const time = new Date(timestamp.seconds * 1000).toLocaleString();
+          const li = document.createElement('li');
+          li.className = 'flex justify-between';
+          li.innerHTML = `
+            <span>${time} — ${type.charAt(0).toUpperCase()+type.slice(1)}</span>
+            <span>R${amount.toFixed(2)}</span>
+          `;
+          txList.appendChild(li);
         });
       }
     });
 
+    // Logout
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await signOut(auth);
       window.location.href = 'auth.html';
