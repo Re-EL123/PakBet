@@ -34,7 +34,7 @@
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <!-- Wheel Placeholder -->
       <div class="mb-6">
-        <img id="roulette-wheel" src="assets/images/roulette_wheel.png" alt="Roulette Wheel" class="w-64 h-64 mx-auto"/>
+        <img id="roulette-wheel" src="assets/roulette/roulette_wheel.png" alt="Roulette Wheel" class="w-64 h-64 mx-auto"/>
       </div>
 
       <!-- Bet Controls -->
@@ -64,8 +64,8 @@
 
   <!-- Firebase SDK Script -->
   <script type="module">
-    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -108,11 +108,9 @@
         wheel.style.transform = `rotate(${rotateTo}deg)`;
 
         wheel.addEventListener('transitionend', () => {
-          // Clean up
           wheel.style.transition = '';
           wheel.style.transform = '';
           spinBtn.disabled = false;
-          // Display
           if (outcome === bet) {
             resultEl.textContent = `🎉 You won! The ball landed on ${outcome}.`;
           } else {
@@ -127,3 +125,4 @@
 
 </body>
 </html>
+
