@@ -8,8 +8,12 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
 
-  <header class="bg-gray-800 p-4">
-    <h1 class="text-3xl font-bold text-green-400 text-center">PakBet Admin Dashboard</h1>
+  <header class="bg-gray-800 p-4 flex flex-col md:flex-row items-center justify-between">
+    <h1 class="text-3xl font-bold text-green-400 text-center md:text-left">PakBet Admin Dashboard</h1>
+    <div class="mt-4 md:mt-0 space-x-4">
+      <a href="manage_games.html" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Manage Games</a>
+      <a href="admin_alert.html" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Create Alert</a>
+    </div>
   </header>
 
   <main class="max-w-6xl mx-auto p-6 space-y-12">
@@ -40,7 +44,9 @@
     <!-- Manage User Accounts -->
     <section>
       <h2 class="text-xl font-bold mb-4">User Account Control</h2>
-      <div id="userList" class="space-y-4"></div>
+      <div id="userList" class="space-y-4 bg-gray-800 p-4 rounded">
+        <!-- Each user: Name with Edit button -->
+      </div>
     </section>
   </main>
 
@@ -48,21 +54,11 @@
     &copy; 2025 PakBet Admin Panel
   </footer>
 
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getFirestore, doc, setDoc, updateDoc, collection, getDocs, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
-      authDomain: "pakbet-b0abe.firebaseapp.com",
-      projectId: "pakbet-b0abe",
-      storageBucket: "pakbet-b0abe.appspot.com",
-      messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
-      measurementId: "G-QPLND82T33"
-    };
-
+    const firebaseConfig = { /* config */ };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
@@ -89,7 +85,6 @@
 
     // Load Withdrawals
     const withdrawalsList = document.getElementById('withdrawalsList');
-
     async function loadWithdrawals() {
       const querySnapshot = await getDocs(collection(db, "withdrawals"));
       withdrawalsList.innerHTML = "";
@@ -111,18 +106,15 @@
         }
       });
     }
-
     window.approveWithdrawal = async (id) => {
       await updateDoc(doc(db, "withdrawals", id), { status: "approved" });
       loadWithdrawals();
     }
-
     loadWithdrawals();
 
     // Send Alerts
     const sendAlertBtn = document.getElementById('sendAlertBtn');
     const alertMessage = document.getElementById('alertMessage');
-
     sendAlertBtn.addEventListener('click', async () => {
       const message = alertMessage.value.trim();
       if (!message) return;
@@ -131,9 +123,8 @@
       alert("✅ Alert sent to users.");
     });
 
-    // Load Users
+    // Load and display users with Edit button
     const userList = document.getElementById('userList');
-
     async function loadUsers() {
       const usersSnapshot = await getDocs(collection(db, "users"));
       userList.innerHTML = "";
@@ -141,50 +132,15 @@
         const user = docSnap.data();
         const uid = docSnap.id;
         const el = document.createElement("div");
-        el.className = "bg-gray-800 p-4 rounded shadow";
+        el.className = "bg-gray-700 p-3 rounded flex justify-between items-center";
         el.innerHTML = `
-          <div class="flex justify-between items-center">
-            <div>
-              <p><strong>UID:</strong> ${uid}</p>
-              <p><strong>Email:</strong> ${user.email}</p>
-              <p><strong>Username:</strong> <input id="username-${uid}" class="bg-gray-700 text-white px-2 py-1 rounded w-48" value="${user.username || ''}" /></p>
-              <p><strong>Admin:</strong> ${user.isAdmin ? "✅" : "❌"}</p>
-            </div>
-            <div class="space-x-2 mt-2 md:mt-0">
-              <button onclick="updateUsername('${uid}')" class="bg-yellow-500 px-3 py-1 rounded hover:bg-yellow-600">Update Username</button>
-              <button onclick="makeAdmin('${uid}')" class="bg-blue-500 px-3 py-1 rounded hover:bg-blue-600">Make Admin</button>
-              <button onclick="deleteUser('${uid}')" class="bg-red-500 px-3 py-1 rounded hover:bg-red-600">Delete</button>
-            </div>
-          </div>
+          <span>${user.username || user.email}</span>
+          <a href="edit_user.html?uid=${uid}" class="bg-yellow-500 hover:bg-yellow-600 px-3 py-1 rounded">Edit</a>
         `;
         userList.appendChild(el);
       });
     }
-
-    window.updateUsername = async (uid) => {
-      const newUsername = document.getElementById(`username-${uid}`).value.trim();
-      if (!newUsername) return;
-      await updateDoc(doc(db, "users", uid), { username: newUsername });
-      alert(`✅ Username updated for ${uid}`);
-    };
-
-    window.makeAdmin = async (uid) => {
-      await updateDoc(doc(db, "users", uid), { isAdmin: true });
-      alert(`✅ ${uid} is now an admin`);
-      loadUsers();
-    };
-
-    window.deleteUser = async (uid) => {
-      if (confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
-        await deleteDoc(doc(db, "users", uid));
-        await deleteDoc(doc(db, "wallets", uid));
-        alert(`✅ Deleted user and wallet data for UID: ${uid}`);
-        loadUsers();
-      }
-    };
-
     loadUsers();
   </script>
-
 </body>
 </html>
