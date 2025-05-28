@@ -3,52 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PakBet - Login / Sign Up</title>
+  <title>PakBet - Access</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen px-4">
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
 
-  <div class="w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-8 space-y-6">
-    <h2 class="text-3xl font-bold text-center text-green-500">PakBet Access</h2>
+  <!-- Navigation -->
+  <nav class="w-full bg-gray-800 p-4 flex justify-between items-center">
+    <span class="text-2xl font-bold text-green-500">PakBet</span>
+    <ul class="flex space-x-6 items-center">
+      <!-- User Name (shown when logged in) -->
+      <li id="navUser" class="hidden">
+        <a id="navUserLink" href="#" class="font-semibold hover:text-green-400"></a>
+      </li>
+      <!-- Login / Sign Up (shown when not logged in) -->
+      <li id="navLogin">
+        <a href="auth.html" class="font-semibold hover:text-green-400">Login</a>
+      </li>
+    </ul>
+  </nav>
 
-    <!-- Tabs -->
-    <div class="flex justify-center gap-4 mb-4">
-      <button id="loginTab" class="font-semibold text-white border-b-2 border-green-500">Login</button>
-      <button id="signupTab" class="font-semibold text-gray-400 hover:text-white">Sign Up</button>
+  <div class="flex-1 flex items-center justify-center px-4">
+    <div class="w-full max-w-md bg-gray-800 rounded-xl shadow-lg p-8 space-y-6">
+      <h2 class="text-3xl font-bold text-center text-green-500">PakBet Access</h2>
+
+      <!-- Tabs -->
+      <div class="flex justify-center gap-4 mb-4">
+        <button id="loginTab" class="font-semibold text-white border-b-2 border-green-500">Login</button>
+        <button id="signupTab" class="font-semibold text-gray-400 hover:text-white">Sign Up</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" class="space-y-4">
+        <input id="loginEmail"    type="email"    placeholder="Email"    required
+               class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <input id="loginPassword" type="password" placeholder="Password" required
+               class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
+          Login with Email
+        </button>
+        <button id="resendVerification" type="button" class="w-full bg-yellow-500 hover:bg-yellow-600 py-2 rounded font-bold hidden">
+          Resend Verification Email
+        </button>
+        <button id="googleSignIn" type="button" class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded font-bold">
+          Sign In with Google
+        </button>
+      </form>
+
+      <!-- Signup Form -->
+      <form id="signupForm" class="space-y-4 hidden">
+        <input id="signupName"     type="text"     placeholder="Full Name"          required
+               class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <input id="signupEmail"    type="email"    placeholder="Email"               required
+               class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <input id="signupPassword" type="password" placeholder="Password (6+ chars)" required
+               class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
+        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
+          Sign Up with Email
+        </button>
+        <button id="googleSignUp" type="button" class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded font-bold">
+          Sign Up with Google
+        </button>
+      </form>
     </div>
-
-    <!-- Login Form -->
-    <form id="loginForm" class="space-y-4">
-      <input id="loginEmail"    type="email"    placeholder="Email"    required
-             class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <input id="loginPassword" type="password" placeholder="Password" required
-             class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
-        Login with Email
-      </button>
-      <button id="resendVerification" type="button" class="w-full bg-yellow-500 hover:bg-yellow-600 py-2 rounded font-bold hidden">
-        Resend Verification Email
-      </button>
-      <button id="googleSignIn" type="button" class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded font-bold">
-        Sign In with Google
-      </button>
-    </form>
-
-    <!-- Signup Form -->
-    <form id="signupForm" class="space-y-4 hidden">
-      <input id="signupName"     type="text"     placeholder="Full Name"          required
-             class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <input id="signupEmail"    type="email"    placeholder="Email"               required
-             class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <input id="signupPassword" type="password" placeholder="Password (6+ chars)" required
-             class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"/>
-      <button type="submit" class="w-full bg-green-500 hover:bg-green-600 py-2 rounded font-bold">
-        Sign Up with Email
-      </button>
-      <button id="googleSignUp" type="button" class="w-full bg-blue-500 hover:bg-blue-600 py-2 rounded font-bold">
-        Sign Up with Google
-      </button>
-    </form>
   </div>
 
   <script type="module">
@@ -91,6 +108,9 @@
     const loginForm   = document.getElementById('loginForm');
     const signupForm  = document.getElementById('signupForm');
     const resendBtn   = document.getElementById('resendVerification');
+    const navUser     = document.getElementById('navUser');
+    const navUserLink = document.getElementById('navUserLink');
+    const navLogin    = document.getElementById('navLogin');
 
     // Tab Switching
     loginTab.addEventListener('click', () => {
@@ -106,6 +126,20 @@
       loginTab.classList.remove('text-white','border-green-500');
     });
 
+    // Auth State Observer
+    onAuthStateChanged(auth, user => {
+      if (user && (user.emailVerified || user.providerData[0].providerId === "google.com")) {
+        // Show user in nav
+        navUserLink.textContent = user.displayName || user.email;
+        navUserLink.href        = 'dashboard.html';
+        navUser.classList.remove('hidden');
+        navLogin.classList.add('hidden');
+      } else {
+        navUser.classList.add('hidden');
+        navLogin.classList.remove('hidden');
+      }
+    });
+
     // Sign Up
     signupForm.addEventListener('submit', async e => {
       e.preventDefault();
@@ -114,16 +148,18 @@
       const password = document.getElementById('signupPassword').value;
       try {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCred.user;
+        const user     = userCred.user;
         await updateProfile(user, { displayName: name });
+        // Create user doc
         await setDoc(doc(db, "users", user.uid), {
           email: user.email,
           username: name,
           isAdmin: false,
           createdAt: serverTimestamp()
         });
+        // Initialize wallet with R0.00
         await setDoc(doc(db, "wallets", user.uid), {
-          balance: 0,
+          balance: 0.00,
           lastUpdated: serverTimestamp()
         });
         await sendEmailVerification(user);
@@ -185,7 +221,7 @@
           createdAt: serverTimestamp()
         }, { merge: true });
         await setDoc(doc(db, "wallets", user.uid), {
-          balance: 0,
+          balance: 0.00,
           lastUpdated: serverTimestamp()
         }, { merge: true });
         window.location.href = 'dashboard.html';
@@ -206,7 +242,7 @@
           createdAt: serverTimestamp()
         }, { merge: true });
         await setDoc(doc(db, "wallets", user.uid), {
-          balance: 0,
+          balance: 0.00,
           lastUpdated: serverTimestamp()
         }, { merge: true });
         window.location.href = 'dashboard.html';
@@ -215,12 +251,6 @@
       }
     });
 
-    // Redirect if already logged in
-    onAuthStateChanged(auth, user => {
-      if (user && (user.emailVerified || user.providerData[0].providerId === "google.com")) {
-        window.location.href = 'dashboard.html';
-      }
-    });
   </script>
 
 </body>
