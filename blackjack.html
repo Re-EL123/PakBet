@@ -11,17 +11,9 @@
   <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6 flex items-center" id="navbar-links">
-        <a href="index.html" class="hover:text-green-400">Home</a>
-        <a href="soccer.html" class="hover:text-green-400">Soccer</a>
-        <a href="aviator.html" class="hover:text-green-400">Aviator</a>
-        <a href="cricket.html" class="hover:text-green-400">Cricket</a>
-        <a href="casino.html" class="hover:text-green-400">Casino</a>
-        <a href="auth.html" id="auth-link" class="hover:text-green-400">Login</a>
-      </div>
+      <span class="text-2xl font-bold text-green-500">PakBet</span>
+      <ul id="navUserMenu" class="flex items-center space-x-6"></ul>
     </div>
-    <!-- Alert Banner -->
     <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
@@ -67,12 +59,10 @@
     </div>
   </main>
 
-  <!-- Footer -->
   <footer class="bg-gray-800 text-center py-6">
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase & User Integration -->
   <script type="module">
     import { initializeApp }            from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAnalytics }             from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
@@ -83,29 +73,27 @@
       collection, query, orderBy, limit, getDocs
     }                                   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-    // Your Firebase config (unchanged)
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
       storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+
     const app  = initializeApp(firebaseConfig);
     getAnalytics(app);
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    const navbarLinks = document.getElementById('navbar-links');
-    const authLink    = document.getElementById('auth-link');
+    const navUserMenu = document.getElementById('navUserMenu');
     const alertBanner = document.getElementById('alertBanner');
     const greeting    = document.getElementById('greeting');
 
-    // Fetch latest admin alert
     async function loadLatestAlert() {
-      const q = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
+      const q    = query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1));
       const snap = await getDocs(q);
       if (!snap.empty) {
         alertBanner.textContent = snap.docs[0].data().message;
@@ -113,78 +101,37 @@
       }
     }
 
-    // Auto-seed user & wallet
     async function seedUserAndWallet(uid, email, name) {
-      const uref = doc(db,'users',uid);
-      if (!(await getDoc(uref)).exists()) {
-        await setDoc(uref, {
-          email,
-          username: name || email.split('@')[0],
-          isAdmin: false,
-          createdAt: serverTimestamp()
-        });
+      const userRef   = doc(db, 'users', uid);
+      const walletRef = doc(db, 'wallets', uid);
+      if (!(await getDoc(userRef)).exists()) {
+        await setDoc(userRef, { email, username: name || email.split('@')[0], isAdmin: false, createdAt: serverTimestamp() });
       }
-      const wref = doc(db,'wallets',uid);
-      if (!(await getDoc(wref)).exists()) {
-        await setDoc(wref, {
-          balance: 0,
-          lastUpdated: serverTimestamp()
-        });
+      if (!(await getDoc(walletRef)).exists()) {
+        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
       }
+      const wSnap = await getDoc(walletRef);
+      return wSnap.data().balance.toFixed(2);
     }
 
     onAuthStateChanged(auth, async user => {
-      // always load alerts
       await loadLatestAlert();
-
-      // remove default auth link
-      authLink.remove();
-
-      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
-        // seed Firestore
-        await seedUserAndWallet(user.uid, user.email, user.displayName);
-
-        // fetch wallet balance
-        const wSnap = await getDoc(doc(db,'wallets',user.uid));
-        const bal   = wSnap.exists() ? wSnap.data().balance.toFixed(2) : '0.00';
-
-        // greeting
-        greeting.textContent = `Welcome, ${user.displayName || 'Player'}! Balance: R${bal}`;
-
-        // build Profile dropdown
-        const container = document.createElement('div');
-        container.className = 'relative inline-block';
-
-        const btn = document.createElement('button');
-        btn.textContent = user.displayName || 'Profile';
-        btn.className = 'text-green-400 hover:text-green-200';
-        container.appendChild(btn);
-
-        const menu = document.createElement('div');
-        menu.className = 'absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
-        menu.innerHTML = `
-          <a href="dashboard.html"    class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
-          <a href="wallet.html"       class="block px-4 py-2 hover:bg-gray-700">Wallet</a>
-          <a href="casino.html"       class="block px-4 py-2 hover:bg-gray-700">Casino</a>
-          <button id="logoutBtn"      class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
-        `;
-        container.appendChild(menu);
-
-        btn.addEventListener('click', ()=> menu.classList.toggle('hidden'));
-        menu.querySelector('#logoutBtn').addEventListener('click', async ()=>{
-          await signOut(auth);
-          window.location.href = 'auth.html';
-        });
-
-        navbarLinks.appendChild(container);
-      } else {
-        // not logged in → show simple Login link
-        const a = document.createElement('a');
-        a.href = 'auth.html';
-        a.className = 'hover:text-green-400';
-        a.textContent = 'Login';
-        navbarLinks.appendChild(a);
+      if (!user || (!user.emailVerified && user.providerData[0].providerId !== 'google.com')) {
+        await signOut(auth);
+        return window.location.href = 'auth.html';
       }
+
+      const balance = await seedUserAndWallet(user.uid, user.email, user.displayName);
+      greeting.textContent = `Welcome, ${user.displayName || 'Player'} — R${balance}`;
+
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">${user.displayName || user.email} — R${balance}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      });
     });
   </script>
 
@@ -206,11 +153,7 @@
 
       function buildDeck() {
         deck = [];
-        suits.forEach(suit => {
-          ranks.forEach(rank => {
-            deck.push({ suit, rank });
-          });
-        });
+        suits.forEach(suit => ranks.forEach(rank => deck.push({ suit, rank })));
         deck.sort(() => Math.random() - 0.5);
       }
 
@@ -221,9 +164,7 @@
           else if (card.rank === 'ace') { score += 11; aces++; }
           else score += Number(card.rank);
         });
-        while (score > 21 && aces > 0) {
-          score -= 10; aces--;
-        }
+        while (score > 21 && aces) { score -= 10; aces--; }
         return score;
       }
 
@@ -240,46 +181,31 @@
       }
 
       function deal() {
-        buildDeck();
-        dealerHand = [deck.pop(), deck.pop()];
-        playerHand = [deck.pop(), deck.pop()];
+        buildDeck(); dealerHand = [deck.pop(), deck.pop()]; playerHand = [deck.pop(), deck.pop()];
         resultEl.textContent = '';
         renderHand(dealerHand, dealerCardsEl, dealerScoreEl);
         renderHand(playerHand, playerCardsEl, playerScoreEl);
-        btnHit.disabled = false;
-        btnStand.disabled = false;
+        btnHit.disabled = false; btnStand.disabled = false;
       }
 
       btnHit.addEventListener('click', () => {
-        playerHand.push(deck.pop());
-        renderHand(playerHand, playerCardsEl, playerScoreEl);
+        playerHand.push(deck.pop()); renderHand(playerHand, playerCardsEl, playerScoreEl);
         if (calcScore(playerHand) > 21) endRound();
       });
 
       btnStand.addEventListener('click', () => endRound(true));
 
       function endRound(playerStood = false) {
-        btnHit.disabled = true;
-        btnStand.disabled = true;
-
+        btnHit.disabled = true; btnStand.disabled = true;
         if (calcScore(playerHand) > 21) {
           resultEl.textContent = 'You busted! Dealer wins.';
         } else {
-          while (calcScore(dealerHand) < 17) {
-            dealerHand.push(deck.pop());
-          }
+          while (calcScore(dealerHand) < 17) dealerHand.push(deck.pop());
           renderHand(dealerHand, dealerCardsEl, dealerScoreEl);
-
-          const playerScore = calcScore(playerHand);
-          const dealerScore = calcScore(dealerHand);
-
-          if (dealerScore > 21 || playerScore > dealerScore) {
-            resultEl.textContent = 'You win!';
-          } else if (playerScore === dealerScore) {
-            resultEl.textContent = 'Push (tie).';
-          } else {
-            resultEl.textContent = 'Dealer wins.';
-          }
+          const pScore = calcScore(playerHand), dScore = calcScore(dealerHand);
+          if (dScore > 21 || pScore > dScore) resultEl.textContent = 'You win!';
+          else if (pScore === dScore) resultEl.textContent = 'Push (tie).';
+          else resultEl.textContent = 'Dealer wins.';
         }
       }
 
