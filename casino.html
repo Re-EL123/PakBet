@@ -11,52 +11,37 @@
   <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6">
-        <a href="index.html" class="hover:text-green-400">Home</a>
-        <a href="soccer.html" class="hover:text-green-400">Soccer</a>
-        <a href="aviator.html" class="hover:text-green-400">Aviator</a>
-        <a href="cricket.html" class="hover:text-green-400">Cricket</a>
-        <a href="casino.html" class="text-green-400 border-b-2 border-green-400">Casino</a>
-        <a href="auth.html" class="hover:text-green-400">Login</a>
-      </div>
+      <span class="text-2xl font-bold text-green-500">PakBet</span>
+      <ul id="navUserMenu" class="flex items-center space-x-6">
+        <!-- Populated by JS -->
+      </ul>
     </div>
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
   <!-- Page Content -->
   <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
+    <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
     <h1 class="text-4xl font-extrabold mb-6">Casino Games</h1>
-    <p class="text-gray-300 mb-8">
-      Enjoy Blackjack, Roulette, Slots, and more right from your browser.
-    </p>
+    <p class="text-gray-300 mb-8">Enjoy Blackjack, Roulette, Slots, and more right from your browser.</p>
 
     <!-- Casino Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div class="bg-gray-800 p-6 rounded-xl hover:shadow-green-500 text-center">
+      <div class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition">
         <h2 class="text-2xl font-semibold mb-2">Blackjack</h2>
         <p class="text-gray-400 mb-4">Beat the dealer in this classic card game.</p>
-        <a href="blackjack.html"
-           class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
-          Play
-        </a>
+        <a href="blackjack.html" class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Play</a>
       </div>
-      <div class="bg-gray-800 p-6 rounded-xl hover:shadow-green-500 text-center">
+      <div class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition">
         <h2 class="text-2xl font-semibold mb-2">Roulette</h2>
         <p class="text-gray-400 mb-4">Place your chips on the wheel.</p>
-        <a href="roulette.html"
-           class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
-          Play
-        </a>
+        <a href="roulette.html" class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Play</a>
       </div>
-      <div class="bg-gray-800 p-6 rounded-xl hover:shadow-green-500 text-center">
+      <div class="bg-gray-800 p-6 rounded-xl text-center hover:shadow-lg hover:shadow-green-500 transition">
         <h2 class="text-2xl font-semibold mb-2">Slots</h2>
         <p class="text-gray-400 mb-4">Spin the reels and hit the jackpot.</p>
-        <a href="slots.html"
-           class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">
-          Play
-        </a>
+        <a href="slots.html" class="inline-block bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Play</a>
       </div>
-      <!-- Add more casino games here -->
     </div>
   </main>
 
@@ -65,24 +50,76 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase SDK Script -->
   <script type="module">
-    import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
-      storageBucket: "pakbet-b0abe.firebasestorage.app",
+      storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+    const app  = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
+    const navUserMenu = document.getElementById('navUserMenu');
+    const alertBanner = document.getElementById('alertBanner');
+    const greeting    = document.getElementById('greeting');
+
+    async function loadLatestAlert() {
+      const q    = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    async function seedUserAndWallet(uid, email, name) {
+      const userRef   = doc(db,'users',uid);
+      const walletRef = doc(db,'wallets',uid);
+      if (!(await getDoc(userRef)).exists()) {
+        await setDoc(userRef, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      if (!(await getDoc(walletRef)).exists()) {
+        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
+      }
+      const wSnap = await getDoc(walletRef);
+      return wSnap.data().balance.toFixed(2);
+    }
+
+    onAuthStateChanged(auth, async user => {
+      await loadLatestAlert();
+      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
+        const balance = await seedUserAndWallet(user.uid, user.email, user.displayName);
+        greeting.textContent = `Welcome, ${user.displayName || 'Player'} — R${balance}`;
+        navUserMenu.innerHTML = `
+          <li><span class="font-semibold">${user.displayName || user.email} — R${balance}</span></li>
+          <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+        `;
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+          await signOut(auth);
+          window.location.href = 'auth.html';
+        });
+      } else {
+        navUserMenu.innerHTML = `<li><a href="auth.html" class="hover:text-green-400">Login</a></li>`;
+      }
+    });
   </script>
-
 </body>
 </html>
