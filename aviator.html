@@ -11,7 +11,6 @@
       top: 50%;
       left: 0;
       width: 100px;
-      height: auto;
       transform: translateY(-50%);
       transition: transform 0.1s linear;
       z-index: 10;
@@ -29,15 +28,10 @@
   <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <a href="index.html" class="text-2xl font-bold text-green-500">PakBet</a>
-      <div class="space-x-6 flex items-center" id="nav-controls">
-        <a href="index.html" class="hover:text-green-400">Home</a>
-        <a href="soccer.html" class="hover:text-green-400">Soccer</a>
-        <a href="aviator.html" class="text-green-400 border-b-2 border-green-400">Aviator</a>
-        <a href="cricket.html" class="hover:text-green-400">Cricket</a>
-        <a href="casino.html" class="hover:text-green-400">Casino</a>
-        <a href="auth.html" id="loginLink" class="hover:text-green-400">Login</a>
-      </div>
+      <span class="text-2xl font-bold text-green-500">PakBet</span>
+      <ul id="navUserMenu" class="flex items-center space-x-6">
+        <!-- Populated by JS -->
+      </ul>
     </div>
     <!-- Alert Banner -->
     <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
@@ -52,7 +46,7 @@
       Place your bet and watch the multiplier rise—cash out before the plane flies away!
     </p>
 
-    <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block w-full">
+    <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block w-full max-w-md">
       <div class="plane-wrapper">
         <img id="plane" src="assets/aviator/aviator.png" alt="Aviator Plane" />
       </div>
@@ -83,49 +77,49 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase & Aviator Logic -->
   <script type="module">
     import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAnalytics }     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
-    import {
-      getAuth, onAuthStateChanged, signOut
-    }                          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import {
       getFirestore,
       doc, getDoc, setDoc, updateDoc, serverTimestamp,
       collection, query, orderBy, limit, getDocs, addDoc
     }                          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
+    // Placeholder for future banking integration
+    // import Ozow from 'ozow-js-sdk';
+    // import Yoco from 'yoco-js-sdk';
+
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
-      storageBucket: "pakbet-b0abe.firebasestorage.app",
+      storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
 
-    const app  = initializeApp(firebaseConfig);
+    const app   = initializeApp(firebaseConfig);
     getAnalytics(app);
-    const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const auth  = getAuth(app);
+    const db    = getFirestore(app);
 
-    // UI References
-    const navControls  = document.getElementById('nav-controls');
-    const loginLink    = document.getElementById('loginLink');
-    const alertBanner  = document.getElementById('alertBanner');
-    const greeting     = document.getElementById('greeting');
-    const betInput     = document.getElementById('betAmount');
-    const placeBtn     = document.getElementById('placeBet');
-    const cashOutBtn   = document.getElementById('cashOut');
-    const multiplierEl = document.getElementById('multiplier');
-    const plane        = document.getElementById('plane');
-    const resultEl     = document.getElementById('result');
+    const navUserMenu = document.getElementById('navUserMenu');
+    const alertBanner = document.getElementById('alertBanner');
+    const greeting    = document.getElementById('greeting');
+    const betInput    = document.getElementById('betAmount');
+    const placeBtn    = document.getElementById('placeBet');
+    const cashOutBtn  = document.getElementById('cashOut');
+    const multiplierEl= document.getElementById('multiplier');
+    const plane       = document.getElementById('plane');
+    const resultEl    = document.getElementById('result');
 
-    // Load latest admin alert
+    let crashPoint, currentMult, position, animationId, userUid;
+
     async function loadLatestAlert() {
-      const q = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
+      const q    = query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1));
       const snap = await getDocs(q);
       if (!snap.empty) {
         alertBanner.textContent = snap.docs[0].data().message;
@@ -133,9 +127,24 @@
       }
     }
 
-    let deck=[], crashPoint, currentMult, position, animationId, userUid;
+    async function seedUserAndWallet(uid, email, name) {
+      const userRef   = doc(db,'users',uid);
+      const walletRef = doc(db,'wallets',uid);
+      if (!(await getDoc(userRef)).exists()) {
+        await setDoc(userRef, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
+      }
+      if (!(await getDoc(walletRef)).exists()) {
+        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
+      }
+      const wSnap = await getDoc(walletRef);
+      return wSnap.data().balance.toFixed(2);
+    }
 
-    // Record bet to Firestore
     async function recordBet(amount, outcome, multiplier) {
       await addDoc(collection(db,'bets'), {
         uid: userUid,
@@ -145,7 +154,6 @@
         multiplier,
         timestamp: serverTimestamp()
       });
-      // Also record transaction
       await addDoc(collection(db,'transactions'), {
         uid: userUid,
         type: outcome==='win'?'game-win':'game-loss',
@@ -154,95 +162,82 @@
       });
     }
 
-    // Update wallet on win/loss
     async function updateWallet(amount, multiplier, won) {
-      const wref = doc(db,'wallets',userUid);
-      const wsnap= await getDoc(wref);
-      if (!wsnap.exists()) await setDoc(wref,{ balance:0, lastUpdated:serverTimestamp() });
-      let bal = wsnap.data().balance || 0;
+      const wRef = doc(db,'wallets',userUid);
+      const wSnap= await getDoc(wRef);
+      let bal = wSnap.exists() ? wSnap.data().balance : 0;
       bal = won ? bal + amount*multiplier : bal;
-      await updateDoc(wref,{ balance: bal, lastUpdated: serverTimestamp() });
+      await updateDoc(wRef,{ balance: bal, lastUpdated: serverTimestamp() });
       return bal;
     }
 
-    // Aviator game logic remains exactly as before, but now records and updates wallet:
     function startRound() {
       const bet = parseFloat(betInput.value);
-      if (!bet || bet<=0) { resultEl.textContent='Enter a valid bet amount.'; return; }
-      resultEl.textContent=''; betInput.disabled=true; placeBtn.disabled=true; cashOutBtn.classList.remove('hidden');
-      crashPoint = (Math.random()*8.5+1.5).toFixed(2);
-      currentMult=1; position=0; multiplierEl.textContent='×1.00'; plane.style.transform='translate(0,-50%)';
+      if (!bet || bet <= 0) { resultEl.textContent = 'Enter a valid bet amount.'; return; }
+      resultEl.textContent='';
+      betInput.disabled = true;
+      placeBtn.disabled = true;
+      cashOutBtn.classList.remove('hidden');
+
+      crashPoint = (Math.random() * 8.5 + 1.5).toFixed(2);
+      currentMult = 1;
+      position    = 0;
+      multiplierEl.textContent = '×1.00';
+      plane.style.transform = 'translate(0,-50%)';
+
       function tick() {
-        currentMult+=0.02; position+=4;
-        multiplierEl.textContent='×'+currentMult.toFixed(2);
-        plane.style.transform=`translate(${position}px,-50%)`;
-        if (currentMult>=crashPoint||position>=window.innerWidth) {
-          cancelAnimationFrame(animationId); endRound(false, bet);
-        } else animationId = requestAnimationFrame(tick);
+        currentMult += 0.02;
+        position    += 4;
+        multiplierEl.textContent = '×' + currentMult.toFixed(2);
+        plane.style.transform = `translate(${position}px,-50%)`;
+        if (currentMult >= crashPoint || position >= window.innerWidth) {
+          cancelAnimationFrame(animationId);
+          endRound(false, bet);
+        } else {
+          animationId = requestAnimationFrame(tick);
+        }
       }
       animationId = requestAnimationFrame(tick);
     }
 
     async function endRound(cashedOut, bet) {
-      cashOutBtn.classList.add('hidden'); betInput.disabled=false; placeBtn.disabled=false;
-      const won = cashedOut;
+      cashOutBtn.classList.add('hidden');
+      betInput.disabled = false;
+      placeBtn.disabled = false;
       const mult = parseFloat(currentMult.toFixed(2));
-      let newBal;
-      if (won) {
-        newBal = await updateWallet(bet, mult, true);
+      if (cashedOut) {
+        const newBal = await updateWallet(bet, mult, true);
         resultEl.textContent = `🤑 Cashed out at ×${mult}, won R${(bet*mult).toFixed(2)}. New bal: R${newBal.toFixed(2)}`;
-        await recordBet(bet,'win',mult);
+        await recordBet(bet, 'win', mult);
       } else {
-        resultEl.textContent = `💥 Crashed at ×${crashPoint}. You lost your R${bet}.`;
-        await recordBet(bet,'lose',mult);
+        resultEl.textContent = `💥 Crashed at ×${crashPoint}. You lost R${bet}.`;
+        await recordBet(bet, 'lose', mult);
       }
     }
 
     placeBtn.addEventListener('click', startRound);
     cashOutBtn.addEventListener('click', () => { cancelAnimationFrame(animationId); endRound(true, parseFloat(betInput.value)); });
 
-    // Auth State & Initialization
     onAuthStateChanged(auth, async user => {
-      loginLink.remove();
       await loadLatestAlert();
-
-      if (!user || (!user.emailVerified && user.providerData[0].providerId!=='google.com')) {
+      if (!user || (!user.emailVerified && user.providerData[0].providerId !== 'google.com')) {
         await signOut(auth);
-        return window.location.href='auth.html';
+        return window.location.href = 'auth.html';
       }
-
       userUid = user.uid;
-      // Ensure wallet exists
-      const wref = doc(db,'wallets',userUid);
-      const wsnap= await getDoc(wref);
-      if (!wsnap.exists()) await setDoc(wref,{ balance:0, lastUpdated:serverTimestamp() });
+      const balance = await seedUserAndWallet(user.uid, user.email, user.displayName);
+      greeting.textContent = `Welcome, ${user.displayName || 'Player'} — R${balance}`;
 
-      // Navbar profile dropdown
-      const balance = (await getDoc(wref)).data().balance.toFixed(2);
-      greeting.textContent = `Welcome, ${user.displayName||'Player'} — R${balance}`;
-      const container = document.createElement('div');
-      container.className='relative';
-      const btn = document.createElement('button');
-      btn.textContent = `${user.displayName||'Profile'}`;
-      btn.className='text-green-400 hover:text-green-200 focus:outline-none';
-      container.appendChild(btn);
-
-      const menu = document.createElement('div');
-      menu.className='absolute right-0 mt-2 w-40 bg-gray-800 rounded shadow-lg hidden';
-      menu.innerHTML=`
-        <a href="dashboard.html" class="block px-4 py-2 hover:bg-gray-700">Dashboard</a>
-        <a href="wallet.html"    class="block px-4 py-2 hover:bg-gray-700">Wallet</a>
-        <button id="logoutBtn"   class="w-full text-left px-4 py-2 hover:bg-gray-700">Logout</button>
+      // Navbar profile
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">${user.displayName || user.email} — R${balance}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
       `;
-      container.appendChild(menu);
-      btn.addEventListener('click',()=>menu.classList.toggle('hidden'));
-      menu.querySelector('#logoutBtn').addEventListener('click',async()=>{
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
         await signOut(auth);
-        window.location.href='auth.html';
+        window.location.href = 'auth.html';
       });
-      navControls.appendChild(container);
     });
   </script>
-
 </body>
 </html>
