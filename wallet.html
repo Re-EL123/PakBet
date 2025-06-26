@@ -1,88 +1,256 @@
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-  import {
-    getFirestore, doc, getDoc, setDoc, serverTimestamp,
-    collection, query, where, orderBy, limit, getDocs,
-    updateDoc, addDoc
-  } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
-    authDomain: "pakbet-b0abe.firebaseapp.com",
-    projectId: "pakbet-b0abe",
-    storageBucket: "pakbet-b0abe.appspot.com",
-    messagingSenderId: "499452911724",
-    appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
-    measurementId: "G-QPLND82T33"
-  };
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <span class="text-2xl font-bold text-green-500">PakBet</span>
+      <ul id="navUserMenu" class="flex items-center space-x-6">
+        <!-- Populated by JS -->
+      </ul>
+    </div>
+    <!-- Alert Banner -->
+    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
+  </nav>
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  <!-- Wallet Content -->
+  <main class="flex-grow max-w-3xl mx-auto px-4 py-12 space-y-8">
+    <h1 class="text-4xl font-bold text-center mb-6">My Wallet</h1>
 
-  const depositBtn = document.getElementById('depositBtn');
-  const depositInput = document.getElementById('deposit-amount');
-  const depositMethod = document.getElementById('deposit-method');
-  const statusMsg = document.getElementById('statusMessage');
+    <!-- Profile Greeting & Balance -->
+    <div id="greeting" class="text-center text-lg text-gray-300"></div>
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-6">
+      <p class="text-xl">Balance: <span id="wallet-balance" class="text-green-400">Loading…</span> Paks</p>
 
-  // Generate Unique Reference
-  function generateReference() {
-    return 'PAK-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-  }
+      <!-- Deposit Section -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Deposit (Buy Paks)</h2>
+        <div class="flex items-center space-x-4">
+          <input id="deposit-amount" type="number" min="1" placeholder="Amount in ZAR" class="p-2 w-32 rounded bg-gray-700 text-white focus:outline-none"/>
+          <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white focus:outline-none">
+            <option value="shop2shop">Shop2Shop (QR)</option>
+            <option value="voucher">1-Voucher (16 digits)</option>
+            <option value="flashvoucher">Flash-Voucher (16 digits)</option>
+            <option value="manual">Manual Bank Transfer</option>
+          </select>
+          <button id="depositBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+            Deposit
+          </button>
+        </div>
+        <a href="deposit.html" class="inline-block mt-2 text-sm text-green-400 hover:underline">
+          Go to Advanced Deposit
+        </a>
+      </div>
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) return window.location.href = 'auth.html';
+      <!-- Withdraw Section -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Withdraw (Redeem Paks)</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
+          <input id="withdraw-amount" type="number" min="1" placeholder="Amount in Paks" class="p-2 w-32 rounded bg-gray-700 text-white focus:outline-none"/>
+          <input id="bank-details" type="text" placeholder="Bank Details" class="p-2 rounded bg-gray-700 text-white focus:outline-none flex-1"/>
+          <button id="withdrawBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+            Withdraw
+          </button>
+        </div>
+        <a href="withdraw.html" class="inline-block mt-2 text-sm text-yellow-400 hover:underline">
+          Go to Advanced Withdraw
+        </a>
+      </div>
 
-    depositBtn.addEventListener('click', async () => {
-      const amount = parseFloat(depositInput.value);
-      const method = depositMethod.value;
+      <!-- Voucher Section -->
+      <div>
+        <h2 class="text-lg font-semibold mb-2">Buy Voucher</h2>
+        <div class="flex items-center space-x-4">
+          <button id="buyVoucherBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded font-bold">
+            Buy Voucher
+          </button>
+        </div>
+        <a href="buy-voucher.html" class="inline-block mt-2 text-sm text-blue-400 hover:underline">
+          Go to Voucher Store
+        </a>
+      </div>
 
-      if (isNaN(amount) || amount <= 0) {
-        statusMsg.textContent = 'Please enter a valid amount in Rands.';
+      <p id="statusMessage" class="text-center text-sm text-gray-400"></p>
+    </div>
+
+    <!-- Recent Transactions -->
+    <section>
+      <h2 class="text-2xl font-semibold mb-4 text-green-400">Recent Transactions</h2>
+      <ul id="transactionsList" class="bg-gray-800 p-4 rounded-xl space-y-2">
+        <li>Loading transactions…</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+  <!-- Firebase SDK & Wallet Logic -->
+  <script type="module">
+    import { initializeApp }                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut }          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc, getDoc, setDoc, serverTimestamp,
+      collection, query, where, orderBy, limit, getDocs,
+      updateDoc, addDoc
+    }                                                         from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // UI refs
+    const navUserMenu   = document.getElementById('navUserMenu');
+    const alertBanner   = document.getElementById('alertBanner');
+    const greeting      = document.getElementById('greeting');
+    const balanceEl     = document.getElementById('wallet-balance');
+    const statusMsg     = document.getElementById('statusMessage');
+    const depositInput  = document.getElementById('deposit-amount');
+    const depositMethod = document.getElementById('deposit-method');
+    const depositBtn    = document.getElementById('depositBtn');
+    const withdrawInput = document.getElementById('withdraw-amount');
+    const bankInput     = document.getElementById('bank-details');
+    const withdrawBtn   = document.getElementById('withdrawBtn');
+    const txList        = document.getElementById('transactionsList');
+    const buyVoucherBtn = document.getElementById('buyVoucherBtn');
+
+    // show latest alert
+    async function loadLatestAlert() {
+      const snap = await getDocs(query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1)));
+      if (!snap.empty) {
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    // load last 5 transactions
+    async function loadTransactions(uid) {
+      const snap = await getDocs(
+        query(collection(db,'transactions'),
+              where('uid','==',uid),
+              orderBy('timestamp','desc'),
+              limit(5))
+      );
+      txList.innerHTML = '';
+      if (snap.empty) {
+        txList.innerHTML = '<li>No transactions yet.</li>';
         return;
       }
+      snap.forEach(d=> {
+        const { type, amount, timestamp, reference } = d.data();
+        const time = new Date(timestamp.seconds*1000).toLocaleString();
+        const li = document.createElement('li');
+        li.className = 'flex justify-between';
+        li.innerHTML = `<span>${time} — ${type} (Ref: ${reference})</span><span>${amount.toFixed(2)} P</span>`;
+        txList.appendChild(li);
+      });
+    }
 
-      const reference = generateReference();
-      const uid = user.uid;
+    // generate unique reference
+    function genRef() {
+      return 'PAK-'+Math.random().toString(36).slice(2,10).toUpperCase();
+    }
 
-      let paymentData = {
-        uid: uid,
-        amount: amount,
-        method: method,
-        status: "pending",
-        reference: reference,
-        timestamp: serverTimestamp()
-      };
-
-      if (method === 'shop2shop') {
-        // Redirect user to Shop2Shop payment page
-        window.open('https://shop.shoptoshop.co.za/qr-code/send?code=IZVGIL', '_blank');
-        statusMsg.textContent = 'Complete your payment at Shop2Shop. Then wait for admin to confirm.';
-      } else if (method === 'voucher' || method === 'flashvoucher') {
-        const voucherCode = prompt(`Enter your ${method === 'voucher' ? 'Voucher' : 'Flash Voucher'} 16-digit code:`);
-        if (!voucherCode || voucherCode.length !== 16) {
-          statusMsg.textContent = 'Invalid Voucher Code.';
-          return;
-        }
-        paymentData.voucherCode = voucherCode;
-        await addDoc(collection(db, 'pending_deposits'), paymentData);
-        statusMsg.textContent = `Voucher submitted! Reference: ${reference}. Awaiting admin approval.`;
-      } else if (method === 'manual') {
-        const accName = prompt("Account Holder Name:");
-        const bankName = prompt("Bank Name:");
-        const accNum = prompt("Account Number:");
-        const ref = prompt("Reference Used for Bank Transfer:");
-        if (!accName || !bankName || !accNum || !ref) {
-          statusMsg.textContent = 'All bank details are required.';
-          return;
-        }
-        paymentData.bankDetails = { accName, bankName, accNum, userReference: ref };
-        await addDoc(collection(db, 'pending_deposits'), paymentData);
-        statusMsg.textContent = `Bank deposit logged! Reference: ${reference}. Awaiting admin verification.`;
-      } else {
-        statusMsg.textContent = 'Invalid deposit method.';
+    // auth listener
+    onAuthStateChanged(auth, async user => {
+      await loadLatestAlert();
+      if (!user) {
+        return window.location.href='auth.html';
       }
+      // seed wallet if needed
+      const wRef = doc(db,'wallets',user.uid);
+      if (!(await getDoc(wRef)).exists()) {
+        await setDoc(wRef,{ balance:0, lastUpdated: serverTimestamp() });
+      }
+      const bal = (await getDoc(wRef)).data().balance;
+      // nav menu
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">${user.displayName||user.email} — ${bal.toFixed(2)} P</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
+      document.getElementById('logoutBtn').onclick = async ()=>{ await signOut(auth); window.location.href='auth.html'; };
+      greeting.textContent = `Welcome, ${user.displayName||'Player'}!`;
+      balanceEl.textContent = bal.toFixed(2);
+      loadTransactions(user.uid);
     });
-  });
-</script>
+
+    // deposit handler
+    depositBtn.onclick = async ()=>{
+      const amt = parseFloat(depositInput.value);
+      const method = depositMethod.value;
+      if (isNaN(amt)||amt<=0) {
+        statusMsg.textContent='Enter a valid amount.'; return;
+      }
+      depositBtn.disabled=true;
+      statusMsg.textContent=`Processing ${method} deposit…`;
+      const ref = genRef();
+      const uid = auth.currentUser.uid;
+      const data = {
+        uid, amount:amt, method, reference:ref,
+        status:'pending', timestamp: serverTimestamp()
+      };
+      if (method==='shop2shop') {
+        window.open('https://shop.shoptoshop.co.za/qr-code/send?code=IZVGIL','_blank');
+      } else if (method==='voucher'||method==='flashvoucher') {
+        const code = prompt('Enter your 16-digit code:');
+        if (!code||code.length!==16) {
+          statusMsg.textContent='Invalid code.'; depositBtn.disabled=false; return;
+        }
+        data.voucherCode=code;
+      } else if (method==='manual') {
+        const accName = prompt('Account holder name:');
+        const bank = prompt('Bank name:');
+        const accNum = prompt('Account number:');
+        const userRef = prompt('Your payment reference:');
+        if (!accName||!bank||!accNum||!userRef) {
+          statusMsg.textContent='All bank details required.'; depositBtn.disabled=false; return;
+        }
+        data.bankDetails={ accName, bank, accNum, userRef };
+      }
+      await addDoc(collection(db,'pending_deposits'),data);
+      statusMsg.textContent=`Deposit request logged (Ref: ${ref}). Awaiting admin approval.`;
+      depositBtn.disabled=false;
+    };
+
+    // withdraw handler
+    withdrawBtn.onclick = async ()=>{
+      const amt = parseFloat(withdrawInput.value);
+      const bank = bankInput.value.trim();
+      if (!bank||isNaN(amt)||amt<=0) {
+        statusMsg.textContent='Enter amount & bank details.'; return;
+      }
+      withdrawBtn.disabled=true;
+      statusMsg.textContent='Logging withdrawal…';
+      const ref = genRef();
+      const uid = auth.currentUser.uid;
+      await addDoc(collection(db,'pending_withdrawals'),{
+        uid, amount:amt, bankDetails:bank, reference:ref,
+        status:'pending', timestamp: serverTimestamp()
+      });
+      statusMsg.textContent=`Withdrawal request logged (Ref: ${ref}). Awaiting admin approval.`;
+      withdrawBtn.disabled=false;
+    };
+
+    // voucher button
+    buyVoucherBtn.onclick = ()=> window.location.href='buy-voucher.html';
+  </script>
+</body>
+</html>
