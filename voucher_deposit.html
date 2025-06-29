@@ -8,39 +8,23 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Navbar -->
-  <nav class="bg-gray-800 shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+  <!-- Header -->
+  <header class="bg-gray-800 shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
-      <button onclick="window.location.href='wallet.html'" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold">Back to Wallet</button>
     </div>
-  </nav>
+  </header>
 
-  <!-- Content -->
-  <main class="flex-grow max-w-md mx-auto px-4 py-12 space-y-6">
+  <main class="flex-grow max-w-2xl mx-auto px-4 py-12 space-y-8">
     <h1 class="text-3xl font-bold text-center mb-4">Voucher Deposit</h1>
+    <p id="voucherTypeDisplay" class="text-center text-lg text-gray-300"></p>
+
     <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
-      
-      <div>
-        <label class="block mb-2 text-sm font-medium">Voucher Type:</label>
-        <input id="voucher-type" type="text" readonly
-               class="p-2 w-full rounded bg-gray-700 text-white"/>
-      </div>
+      <input id="voucherCode" type="text" maxlength="16" placeholder="Enter 16-digit Voucher Code"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg tracking-widest"/>
 
-      <div>
-        <label class="block mb-2 text-sm font-medium">Amount (ZAR):</label>
-        <input id="voucher-amount" type="number" readonly
-               class="p-2 w-full rounded bg-gray-700 text-white"/>
-      </div>
-
-      <div>
-        <label class="block mb-2 text-sm font-medium">Voucher Code (16 digits):</label>
-        <input id="voucher-code" type="text" maxlength="16"
-               class="p-2 w-full rounded bg-gray-700 text-white" placeholder="Enter 16-digit code"/>
-      </div>
-
-      <button id="submitVoucherBtn"
-              class="w-full bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold">
+      <button id="submitVoucher"
+              class="bg-green-500 hover:bg-green-600 w-full py-3 rounded font-bold text-lg">
         Submit Voucher
       </button>
 
@@ -48,11 +32,15 @@
     </div>
   </main>
 
-  <!-- Firebase & JS -->
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
+
+  <!-- Firebase + Logic -->
   <script type="module">
     import { initializeApp }                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut }          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged }                   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -63,51 +51,44 @@
       appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-    const app  = initializeApp(firebaseConfig);
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    const voucherTypeEl   = document.getElementById('voucher-type');
-    const voucherAmtEl    = document.getElementById('voucher-amount');
-    const voucherCodeEl   = document.getElementById('voucher-code');
-    const submitBtn       = document.getElementById('submitVoucherBtn');
-    const statusMsg       = document.getElementById('statusMessage');
-
-    // Generate Reference
-    function genRef() {
-      return 'PAK-' + Math.random().toString(36).substr(2,8).toUpperCase();
-    }
+    const voucherCodeEl = document.getElementById('voucherCode');
+    const statusMsg     = document.getElementById('statusMessage');
+    const submitBtn     = document.getElementById('submitVoucher');
+    const voucherTypeEl = document.getElementById('voucherTypeDisplay');
 
     // Get URL Params
-    const params = new URLSearchParams(window.location.search);
-    const vType  = params.get('type') || '1voucher';
-    const vAmt   = parseFloat(params.get('amount')) || 0;
+    const urlParams = new URLSearchParams(window.location.search);
+    const type      = urlParams.get('type') || 'voucher';
+    const ref       = urlParams.get('ref')  || '';
+    const amount    = urlParams.get('amount') || '';
 
-    voucherTypeEl.value = vType === 'flashvoucher' ? 'Flash Voucher' : '1Voucher';
-    voucherAmtEl.value  = vAmt;
+    voucherTypeEl.textContent = `Deposit Method: ${type === 'flashvoucher' ? 'Flash Voucher' : '1-Voucher'}`;
 
     onAuthStateChanged(auth, user => {
       if (!user) return window.location.href = 'auth.html';
 
       submitBtn.onclick = async () => {
         const code = voucherCodeEl.value.trim();
-        if (code.length !== 16 || isNaN(Number(code))) {
-          statusMsg.textContent = 'Please enter a valid 16-digit numeric voucher code.';
-          return;
+        if (code.length !== 16 || !/^\d+$/.test(code)) {
+          return statusMsg.textContent = 'Enter a valid 16-digit numeric voucher code.';
         }
-        submitBtn.disabled = true;
-        const ref = genRef();
-        await addDoc(collection(db, 'pending_deposits'), {
+
+        await addDoc(collection(db, 'pending_vouchers'), {
           uid: user.uid,
-          type: vType,
-          amount: vAmt,
-          code: code,
+          voucherType: type,
+          voucherCode: code,
           reference: ref,
+          amount: amount || null,
           status: 'pending',
           timestamp: serverTimestamp()
         });
-        statusMsg.textContent = `Voucher submitted! Ref: ${ref}. Await admin approval.`;
-        setTimeout(()=>window.location.href='wallet.html', 3000);
+
+        statusMsg.textContent = 'Voucher submitted! Await admin approval.';
+        submitBtn.disabled = true;
       };
     });
   </script>
