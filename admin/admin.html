@@ -17,6 +17,7 @@
   </header>
 
   <main class="max-w-6xl mx-auto p-6 space-y-12">
+    
     <!-- Update User Balance -->
     <section>
       <h2 class="text-xl font-bold mb-4">Update User Balance</h2>
@@ -26,6 +27,14 @@
         <button id="updateBalanceBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-700">Update</button>
       </div>
       <p id="balanceUpdateStatus" class="mt-2 text-sm text-gray-300"></p>
+    </section>
+
+    <!-- Pending Voucher Deposits -->
+    <section>
+      <h2 class="text-xl font-bold mb-4">Pending Voucher Deposits</h2>
+      <div id="voucherList" class="bg-gray-700 p-4 rounded space-y-2">
+        Loading vouchers…
+      </div>
     </section>
 
     <!-- Pending Withdrawals -->
@@ -45,7 +54,7 @@
     <section>
       <h2 class="text-xl font-bold mb-4">User Account Control</h2>
       <div id="userList" class="space-y-4 bg-gray-800 p-4 rounded">
-        <!-- Dynamically loaded users -->
+        Loading users…
       </div>
     </section>
   </main>
@@ -87,6 +96,47 @@
         status.textContent = `❌ Error: ${err.message}`;
       }
     });
+
+    // Load Pending Vouchers
+    async function loadVouchers() {
+      const container = document.getElementById('voucherList');
+      const snaps = await getDocs(collection(db, 'pending_vouchers'));
+      container.innerHTML = '';
+      snaps.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.status === 'pending') {
+          const el = document.createElement('div');
+          el.className = 'bg-gray-700 p-3 rounded flex justify-between items-center';
+          el.innerHTML = `
+            <div>
+              <p><strong>UID:</strong> ${data.uid}</p>
+              <p><strong>Voucher Type:</strong> ${data.voucherType}</p>
+              <p><strong>Code:</strong> ${data.voucherCode}</p>
+              <p><strong>Ref:</strong> ${data.reference}</p>
+              <p><strong>Amount (Optional):</strong> ${data.amount || 'N/A'}</p>
+            </div>
+            <button class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded" onclick="approveVoucher('${docSnap.id}', '${data.uid}', ${parseFloat(data.amount) || 0})">
+              Approve
+            </button>
+          `;
+          container.appendChild(el);
+        }
+      });
+    }
+    window.approveVoucher = async (id, uid, amount) => {
+      // Update wallet balance
+      const walletRef = doc(db, 'wallets', uid);
+      await updateDoc(walletRef, {
+        balance: amount
+      }).catch(err => console.error('Wallet update failed:', err));
+
+      // Mark voucher as approved
+      await updateDoc(doc(db, 'pending_vouchers', id), { status: 'approved' });
+
+      // Refresh list
+      loadVouchers();
+    };
+    loadVouchers();
 
     // Load Withdrawals
     async function loadWithdrawals() {
