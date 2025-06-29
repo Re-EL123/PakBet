@@ -33,8 +33,6 @@
       <div>
         <h2 class="text-lg font-semibold mb-2">Deposit (Buy Paks)</h2>
         <div class="flex items-center space-x-4">
-          <input id="deposit-amount" type="number" min="1" placeholder="Amount in ZAR"
-                 class="p-2 w-32 rounded bg-gray-700 text-white focus:outline-none"/>
           <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white">
             <option value="shop2shop">Shop2Shop</option>
             <option value="voucher">1-Voucher (16 digits)</option>
@@ -121,13 +119,11 @@
     const auth = getAuth(app);
     const db   = getFirestore(app);
 
-    // UI refs
     const navMenu       = document.getElementById('navUserMenu');
     const alertBanner   = document.getElementById('alertBanner');
     const greeting      = document.getElementById('greeting');
     const balanceEl     = document.getElementById('wallet-balance');
     const statusMsg     = document.getElementById('statusMessage');
-    const depositAmt    = document.getElementById('deposit-amount');
     const depositMtd    = document.getElementById('deposit-method');
     const depositBtn    = document.getElementById('depositBtn');
     const withdrawBtn   = document.getElementById('withdrawBtn');
@@ -139,8 +135,7 @@
     }
 
     async function loadLatestAlert() {
-      const snap = await getDocs(query(collection(db,'alerts'),
-        orderBy('timestamp','desc'), limit(1)));
+      const snap = await getDocs(query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1)));
       if (!snap.empty) {
         alertBanner.textContent = snap.docs[0].data().message;
         alertBanner.classList.remove('hidden');
@@ -174,7 +169,6 @@
       await loadLatestAlert();
       if (!user) return window.location.href='auth.html';
 
-      // Seed wallet
       const wRef = doc(db,'wallets',user.uid);
       if (!(await getDoc(wRef)).exists()) {
         await setDoc(wRef,{ balance: 0, lastUpdated: serverTimestamp() });
@@ -194,7 +188,6 @@
     });
 
     depositBtn.onclick = () => {
-      const amt    = parseFloat(depositAmt.value);
       const mtd    = depositMtd.value;
       const ref    = genRef();
       const uid    = auth.currentUser.uid;
@@ -203,12 +196,12 @@
         window.open('https://shop.shoptoshop.co.za/qr-code/send?code=IZVGIL','_blank');
         statusMsg.textContent = `Scan & pay. Ref: ${ref}. Await admin approval.`;
         addDoc(collection(db,'pending_deposits'), {
-          uid, amount: amt, method: mtd, reference: ref,
+          uid, method: mtd, reference: ref,
           status:'pending', timestamp: serverTimestamp()
         });
       }
       else if (mtd==='voucher' || mtd==='flashvoucher') {
-        window.location.href = `voucher_deposit.html?type=${mtd}&amount=${amt}&ref=${ref}`;
+        window.location.href = `voucher_deposit.html?type=${mtd}&ref=${ref}`;
       }
       else if (mtd==='manual') {
         window.location.href = `deposit.html?ref=${ref}`;
