@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Voucher Deposit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <span class="text-2xl font-bold text-green-500">PakBet</span>
+      <button onclick="window.location.href='wallet.html'" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold">Back to Wallet</button>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="flex-grow max-w-md mx-auto px-4 py-12 space-y-6">
+    <h1 class="text-3xl font-bold text-center mb-4">Voucher Deposit</h1>
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
+      
+      <div>
+        <label class="block mb-2 text-sm font-medium">Voucher Type:</label>
+        <input id="voucher-type" type="text" readonly
+               class="p-2 w-full rounded bg-gray-700 text-white"/>
+      </div>
+
+      <div>
+        <label class="block mb-2 text-sm font-medium">Amount (ZAR):</label>
+        <input id="voucher-amount" type="number" readonly
+               class="p-2 w-full rounded bg-gray-700 text-white"/>
+      </div>
+
+      <div>
+        <label class="block mb-2 text-sm font-medium">Voucher Code (16 digits):</label>
+        <input id="voucher-code" type="text" maxlength="16"
+               class="p-2 w-full rounded bg-gray-700 text-white" placeholder="Enter 16-digit code"/>
+      </div>
+
+      <button id="submitVoucherBtn"
+              class="w-full bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold">
+        Submit Voucher
+      </button>
+
+      <p id="statusMessage" class="text-center text-sm text-gray-400"></p>
+    </div>
+  </main>
+
+  <!-- Firebase & JS -->
+  <script type="module">
+    import { initializeApp }                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut }          from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const voucherTypeEl   = document.getElementById('voucher-type');
+    const voucherAmtEl    = document.getElementById('voucher-amount');
+    const voucherCodeEl   = document.getElementById('voucher-code');
+    const submitBtn       = document.getElementById('submitVoucherBtn');
+    const statusMsg       = document.getElementById('statusMessage');
+
+    // Generate Reference
+    function genRef() {
+      return 'PAK-' + Math.random().toString(36).substr(2,8).toUpperCase();
+    }
+
+    // Get URL Params
+    const params = new URLSearchParams(window.location.search);
+    const vType  = params.get('type') || '1voucher';
+    const vAmt   = parseFloat(params.get('amount')) || 0;
+
+    voucherTypeEl.value = vType === 'flashvoucher' ? 'Flash Voucher' : '1Voucher';
+    voucherAmtEl.value  = vAmt;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) return window.location.href = 'auth.html';
+
+      submitBtn.onclick = async () => {
+        const code = voucherCodeEl.value.trim();
+        if (code.length !== 16 || isNaN(Number(code))) {
+          statusMsg.textContent = 'Please enter a valid 16-digit numeric voucher code.';
+          return;
+        }
+        submitBtn.disabled = true;
+        const ref = genRef();
+        await addDoc(collection(db, 'pending_deposits'), {
+          uid: user.uid,
+          type: vType,
+          amount: vAmt,
+          code: code,
+          reference: ref,
+          status: 'pending',
+          timestamp: serverTimestamp()
+        });
+        statusMsg.textContent = `Voucher submitted! Ref: ${ref}. Await admin approval.`;
+        setTimeout(()=>window.location.href='wallet.html', 3000);
+      };
+    });
+  </script>
+</body>
+</html>
