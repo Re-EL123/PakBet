@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Manage Games</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <span class="text-2xl font-bold text-green-500">PakBet Admin</span>
+      <ul id="navUserMenu" class="flex items-center space-x-6"></ul>
+    </div>
+  </nav>
+
+  <main class="flex-grow max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-4xl font-extrabold mb-8">Manage Soccer Fixtures</h1>
+
+    <div class="bg-gray-800 p-6 rounded-xl mb-12">
+      <h2 class="text-2xl font-bold mb-4">Add New Fixture</h2>
+      <form id="addFixtureForm" class="space-y-4">
+        <input id="homeTeam" type="text" placeholder="Home Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
+        <input id="awayTeam" type="text" placeholder="Away Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
+        <input id="league" type="text" placeholder="League" class="w-full p-2 rounded bg-gray-700 text-white" required>
+        <input id="fixtureDate" type="datetime-local" class="w-full p-2 rounded bg-gray-700 text-white" required>
+        <div class="flex space-x-2">
+          <input id="oddsHome" type="number" step="0.01" placeholder="Home Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
+          <input id="oddsDraw" type="number" step="0.01" placeholder="Draw Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
+          <input id="oddsAway" type="number" step="0.01" placeholder="Away Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
+        </div>
+        <button type="submit" class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Add Fixture</button>
+      </form>
+    </div>
+
+    <div>
+      <h2 class="text-2xl font-bold mb-4">Current Fixtures</h2>
+      <div id="fixturesList" class="space-y-4 text-gray-300">
+        <p>Loading fixtures...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet Admin</p>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const app = initializeApp({
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
+    });
+
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const navUserMenu = document.getElementById('navUserMenu');
+    const fixturesList = document.getElementById('fixturesList');
+    const addFixtureForm = document.getElementById('addFixtureForm');
+
+    let adminUid;
+
+    function updateNavbar(user) {
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">${user.displayName || user.email}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      };
+    }
+
+    async function loadFixtures() {
+      fixturesList.innerHTML = '<p>Loading fixtures...</p>';
+      const snap = await getDocs(query(collection(db,'fixtures'), orderBy('date','asc')));
+      fixturesList.innerHTML = '';
+      if (snap.empty) {
+        fixturesList.innerHTML = '<p>No fixtures found.</p>';
+        return;
+      }
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const date = new Date(data.date.seconds * 1000).toLocaleString();
+        fixturesList.innerHTML += `
+          <div class="bg-gray-700 p-4 rounded">
+            <h3 class="font-semibold">${data.home} vs ${data.away}</h3>
+            <p>${data.league} — ${date}</p>
+            <p>Odds: Home ${data.odds.home} | Draw ${data.odds.draw} | Away ${data.odds.away}</p>
+          </div>
+        `;
+      });
+    }
+
+    addFixtureForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const home = document.getElementById('homeTeam').value.trim();
+      const away = document.getElementById('awayTeam').value.trim();
+      const league = document.getElementById('league').value.trim();
+      const dateStr = document.getElementById('fixtureDate').value;
+      const odds = {
+        home: parseFloat(document.getElementById('oddsHome').value),
+        draw: parseFloat(document.getElementById('oddsDraw').value),
+        away: parseFloat(document.getElementById('oddsAway').value)
+      };
+
+      const date = new Date(dateStr);
+      const timestamp = { seconds: Math.floor(date.getTime() / 1000) };
+
+      await addDoc(collection(db,'fixtures'), {
+        home, away, league, date: timestamp, odds,
+        createdBy: adminUid,
+        createdAt: serverTimestamp()
+      });
+
+      alert('✅ Fixture added!');
+      addFixtureForm.reset();
+      loadFixtures();
+    });
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) return window.location.href='auth.html';
+      const userRef = doc(db,'users',user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists() || !snap.data().isAdmin) {
+        await signOut(auth);
+        return window.location.href='auth.html';
+      }
+      adminUid = user.uid;
+      updateNavbar(user);
+      loadFixtures();
+    });
+  </script>
+</body>
+</html>
