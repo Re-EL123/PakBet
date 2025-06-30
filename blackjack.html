@@ -8,7 +8,6 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
@@ -17,139 +16,133 @@
     <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
-  <!-- Page Content -->
   <main class="flex-grow max-w-4xl mx-auto px-4 py-12 space-y-6">
-    <!-- Greeting -->
     <div id="greeting" class="text-center text-lg text-gray-300"></div>
-
     <h1 class="text-4xl font-extrabold mb-6 text-center">Blackjack</h1>
-    <p class="text-gray-300 mb-8 text-center">
-      Try to get as close to 21 as possible without going over. Aces count as 1 or 11.
-    </p>
+    <p class="text-gray-300 mb-4 text-center">Try to get as close to 21 as possible without going over.</p>
 
-    <!-- Game Area -->
+    <div class="text-center mb-6">
+      <input id="betAmount" type="number" placeholder="Bet Amount (Paks)" class="w-32 p-2 rounded bg-gray-700 text-white"/>
+    </div>
+
     <div class="bg-gray-800 p-8 rounded-xl shadow-md">
-      <!-- Dealer Hand -->
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Dealer’s Hand (<span id="dealer-score">0</span>)</h2>
         <div id="dealer-cards" class="flex space-x-2"></div>
       </div>
 
-      <!-- Player Hand -->
       <div class="mb-6">
         <h2 class="text-2xl font-semibold mb-2">Your Hand (<span id="player-score">0</span>)</h2>
         <div id="player-cards" class="flex space-x-2"></div>
       </div>
 
-      <!-- Controls -->
       <div class="flex justify-center space-x-4">
-        <button id="btnHit" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600 disabled:opacity-50" disabled>
-          Hit
-        </button>
-        <button id="btnStand" class="bg-yellow-500 px-6 py-2 rounded font-bold hover:bg-yellow-600 disabled:opacity-50" disabled>
-          Stand
-        </button>
-        <button id="btnDeal" class="bg-blue-500 px-6 py-2 rounded font-bold hover:bg-blue-600">
-          Deal
-        </button>
+        <button id="btnHit" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600 disabled:opacity-50" disabled>Hit</button>
+        <button id="btnStand" class="bg-yellow-500 px-6 py-2 rounded font-bold hover:bg-yellow-600 disabled:opacity-50" disabled>Stand</button>
+        <button id="btnDeal" class="bg-blue-500 px-6 py-2 rounded font-bold hover:bg-blue-600">Deal</button>
       </div>
 
-      <!-- Result Display -->
       <div id="bj-result" class="mt-6 text-center text-xl font-semibold"></div>
     </div>
   </main>
 
-  <footer class="bg-gray-800 text-center py-6">
-    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
-  </footer>
+  <footer class="bg-gray-800 text-center py-6"><p class="text-gray-400 text-sm">&copy; 2025 PakBet</p></footer>
 
   <script type="module">
-    import { initializeApp }            from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }             from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc, getDoc, setDoc, serverTimestamp,
-      collection, query, orderBy, limit, getDocs
-    }                                   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-    const firebaseConfig = {
+    const app = initializeApp({
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
       storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
-      measurementId: "G-QPLND82T33"
-    };
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
+    });
 
-    const app  = initializeApp(firebaseConfig);
-    getAnalytics(app);
     const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const db = getFirestore(app);
 
+    let userUid, userBalance, currentBet = 0;
+
+    const greeting = document.getElementById('greeting');
     const navUserMenu = document.getElementById('navUserMenu');
     const alertBanner = document.getElementById('alertBanner');
-    const greeting    = document.getElementById('greeting');
 
-    async function loadLatestAlert() {
-      const q    = query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1));
-      const snap = await getDocs(q);
+    async function loadAlerts() {
+      const snap = await getDocs(query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1)));
       if (!snap.empty) {
         alertBanner.textContent = snap.docs[0].data().message;
         alertBanner.classList.remove('hidden');
       }
     }
 
-    async function seedUserAndWallet(uid, email, name) {
-      const userRef   = doc(db, 'users', uid);
-      const walletRef = doc(db, 'wallets', uid);
-      if (!(await getDoc(userRef)).exists()) {
-        await setDoc(userRef, { email, username: name || email.split('@')[0], isAdmin: false, createdAt: serverTimestamp() });
-      }
-      if (!(await getDoc(walletRef)).exists()) {
-        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
-      }
-      const wSnap = await getDoc(walletRef);
-      return wSnap.data().balance.toFixed(2);
+    async function getBalance() {
+      const snap = await getDoc(doc(db, 'wallets', userUid));
+      return snap.exists() ? snap.data().balance : 0;
+    }
+
+    async function updateWallet(amount) {
+      const wRef = doc(db, 'wallets', userUid);
+      userBalance += amount;
+      await updateDoc(wRef, { balance: userBalance, lastUpdated: serverTimestamp() });
+      updateNavbar();
+    }
+
+    async function recordTransaction(type, amount) {
+      await addDoc(collection(db, 'transactions'), {
+        uid: userUid,
+        type,
+        amount,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    async function recordBet(result, payout) {
+      await addDoc(collection(db, 'bets'), {
+        uid: userUid,
+        game: 'blackjack',
+        betAmount: currentBet,
+        result,
+        payout,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    function updateNavbar() {
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">Balance: ${userBalance.toFixed(2)} P</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
+      document.getElementById('logoutBtn').onclick = async () => { await signOut(auth); window.location.href='auth.html'; };
     }
 
     onAuthStateChanged(auth, async user => {
-      await loadLatestAlert();
-      if (!user || (!user.emailVerified && user.providerData[0].providerId !== 'google.com')) {
-        await signOut(auth);
-        return window.location.href = 'auth.html';
-      }
-
-      const balance = await seedUserAndWallet(user.uid, user.email, user.displayName);
-      greeting.textContent = `Welcome, ${user.displayName || 'Player'} — R${balance}`;
-
-      navUserMenu.innerHTML = `
-        <li><span class="font-semibold">${user.displayName || user.email} — R${balance}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
-      `;
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await signOut(auth);
-        window.location.href = 'auth.html';
-      });
+      await loadAlerts();
+      if (!user) return window.location.href = 'auth.html';
+      userUid = user.uid;
+      userBalance = await getBalance();
+      greeting.textContent = `Welcome, ${user.displayName || 'Player'} — ${userBalance.toFixed(2)} P`;
+      updateNavbar();
     });
   </script>
 
-  <!-- Blackjack Game Logic -->
   <script>
-    (function () {
+    (function() {
       const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-      const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king', 'ace'];
-      let deck = [], dealerHand = [], playerHand = [];
+      const ranks = ['2','3','4','5','6','7','8','9','10','jack','queen','king','ace'];
+      let deck = [], dealer = [], player = [];
 
-      const dealerCardsEl = document.getElementById('dealer-cards');
-      const playerCardsEl = document.getElementById('player-cards');
+      const dealerEl = document.getElementById('dealer-cards');
+      const playerEl = document.getElementById('player-cards');
       const dealerScoreEl = document.getElementById('dealer-score');
       const playerScoreEl = document.getElementById('player-score');
+      const resultEl = document.getElementById('bj-result');
       const btnDeal = document.getElementById('btnDeal');
       const btnHit = document.getElementById('btnHit');
       const btnStand = document.getElementById('btnStand');
-      const resultEl = document.getElementById('bj-result');
+      const betInput = document.getElementById('betAmount');
 
       function buildDeck() {
         deck = [];
@@ -160,58 +153,74 @@
       function calcScore(hand) {
         let score = 0, aces = 0;
         hand.forEach(card => {
-          if (['jack', 'queen', 'king'].includes(card.rank)) score += 10;
-          else if (card.rank === 'ace') { score += 11; aces++; }
+          if(['jack','queen','king'].includes(card.rank)) score += 10;
+          else if(card.rank === 'ace') { score += 11; aces++; }
           else score += Number(card.rank);
         });
-        while (score > 21 && aces) { score -= 10; aces--; }
+        while(score > 21 && aces) { score -= 10; aces--; }
         return score;
       }
 
-      function renderHand(hand, containerEl, scoreEl) {
-        containerEl.innerHTML = '';
+      function renderHand(hand, container, scoreEl) {
+        container.innerHTML = '';
         hand.forEach(card => {
           const img = document.createElement('img');
           img.src = `assets/playing_cards/${card.rank}_of_${card.suit}.png`;
-          img.alt = `${card.rank} of ${card.suit}`;
           img.className = 'w-20 h-28';
-          containerEl.appendChild(img);
+          container.appendChild(img);
         });
         scoreEl.textContent = calcScore(hand);
       }
 
-      function deal() {
-        buildDeck(); dealerHand = [deck.pop(), deck.pop()]; playerHand = [deck.pop(), deck.pop()];
+      async function startDeal() {
+        const bet = parseFloat(betInput.value);
+        if (isNaN(bet) || bet <= 0) return resultEl.textContent = '❌ Enter a valid bet.';
+        if (bet > userBalance) return resultEl.textContent = '❌ Not enough Paks.';
+        currentBet = bet;
+        await updateWallet(-bet);
+        await recordTransaction('game-bet', -bet);
+
+        buildDeck();
+        dealer = [deck.pop(), deck.pop()];
+        player = [deck.pop(), deck.pop()];
+        render();
         resultEl.textContent = '';
-        renderHand(dealerHand, dealerCardsEl, dealerScoreEl);
-        renderHand(playerHand, playerCardsEl, playerScoreEl);
         btnHit.disabled = false; btnStand.disabled = false;
       }
 
-      btnHit.addEventListener('click', () => {
-        playerHand.push(deck.pop()); renderHand(playerHand, playerCardsEl, playerScoreEl);
-        if (calcScore(playerHand) > 21) endRound();
-      });
-
-      btnStand.addEventListener('click', () => endRound(true));
-
-      function endRound(playerStood = false) {
-        btnHit.disabled = true; btnStand.disabled = true;
-        if (calcScore(playerHand) > 21) {
-          resultEl.textContent = 'You busted! Dealer wins.';
-        } else {
-          while (calcScore(dealerHand) < 17) dealerHand.push(deck.pop());
-          renderHand(dealerHand, dealerCardsEl, dealerScoreEl);
-          const pScore = calcScore(playerHand), dScore = calcScore(dealerHand);
-          if (dScore > 21 || pScore > dScore) resultEl.textContent = 'You win!';
-          else if (pScore === dScore) resultEl.textContent = 'Push (tie).';
-          else resultEl.textContent = 'Dealer wins.';
-        }
+      function render() {
+        renderHand(dealer, dealerEl, dealerScoreEl);
+        renderHand(player, playerEl, playerScoreEl);
       }
 
-      btnDeal.addEventListener('click', deal);
+      async function endRound() {
+        btnHit.disabled = true;
+        btnStand.disabled = true;
+
+        while(calcScore(dealer) < 17) dealer.push(deck.pop());
+        render();
+
+        const p = calcScore(player), d = calcScore(dealer);
+        let msg = '', payout = 0;
+
+        if (p > 21) msg = 'You busted! Dealer wins.';
+        else if (d > 21 || p > d) { msg = 'You win!'; payout = currentBet * 2; }
+        else if (p === d) { msg = 'Push (tie).'; payout = currentBet; }
+        else msg = 'Dealer wins.';
+
+        if (payout > 0) {
+          await updateWallet(payout);
+          await recordTransaction('game-win', payout);
+        }
+
+        await recordBet(msg.includes('win') ? 'win' : (msg.includes('Push') ? 'push' : 'loss'), payout);
+        resultEl.textContent = msg + (payout > 0 ? ` Payout: ${payout.toFixed(2)} P` : '');
+      }
+
+      btnDeal.onclick = startDeal;
+      btnHit.onclick = () => { player.push(deck.pop()); render(); if (calcScore(player) > 21) endRound(); };
+      btnStand.onclick = endRound;
     })();
   </script>
-
 </body>
 </html>
