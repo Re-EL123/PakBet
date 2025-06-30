@@ -8,26 +8,19 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
-      <ul id="navUserMenu" class="flex items-center space-x-6">
-        <!-- Populated by JS -->
-      </ul>
+      <ul id="navUserMenu" class="flex items-center space-x-6"></ul>
     </div>
     <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
-  <!-- Page Content -->
   <main class="flex-grow max-w-4xl mx-auto px-4 py-12 text-center">
     <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
     <h1 class="text-4xl font-extrabold mb-6">Roulette</h1>
-    <p class="text-gray-300 mb-8">
-      Place your bet on a number (0–36), then spin the wheel!
-    </p>
+    <p class="text-gray-300 mb-8">Pick a number (0–36), wager 1 Pak, and spin!</p>
 
-    <!-- Roulette Area -->
     <div class="bg-gray-800 p-8 rounded-xl shadow-md inline-block">
       <div class="mb-6">
         <img id="roulette-wheel" src="assets/roulette/roulette_wheel.png" alt="Roulette Wheel" class="w-64 h-64 mx-auto"/>
@@ -39,15 +32,15 @@
           type="number"
           min="0"
           max="36"
-          placeholder="0–36"
-          class="w-24 p-2 mb-4 sm:mb-0 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+          placeholder="Number (0–36)"
+          class="w-24 p-2 mb-4 sm:mb-0 rounded bg-gray-700 text-white"
         />
         <button id="spinBtn" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600">
-          Spin
+          Spin (1 Pak)
         </button>
       </div>
 
-      <div id="roulette-result" class="text-xl font-semibold"></div>
+      <div id="roulette-result" class="text-xl font-semibold mt-4"></div>
     </div>
   </main>
 
@@ -57,42 +50,33 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc, getDoc, setDoc, updateDoc, serverTimestamp,
-      collection, addDoc,
-      query, orderBy, limit, getDocs
-    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-    const firebaseConfig = {
+    const app = initializeApp({
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
       projectId: "pakbet-b0abe",
       storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
-      measurementId: "G-QPLND82T33"
-    };
-    const app  = initializeApp(firebaseConfig);
-    getAnalytics(app);
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
+    });
+
     const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const db = getFirestore(app);
 
     const navUserMenu = document.getElementById('navUserMenu');
     const alertBanner = document.getElementById('alertBanner');
-    const greeting    = document.getElementById('greeting');
-    const wheel       = document.getElementById('roulette-wheel');
-    const betInput    = document.getElementById('betNumber');
-    const spinBtn     = document.getElementById('spinBtn');
-    const resultEl    = document.getElementById('roulette-result');
+    const greeting = document.getElementById('greeting');
+    const wheel = document.getElementById('roulette-wheel');
+    const betInput = document.getElementById('betNumber');
+    const spinBtn = document.getElementById('spinBtn');
+    const resultEl = document.getElementById('roulette-result');
 
-    let userUid;
+    let userUid, userBalance;
 
     async function loadLatestAlert() {
-      const q    = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
-      const snap = await getDocs(q);
+      const snap = await getDocs(query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1)));
       if (!snap.empty) {
         alertBanner.textContent = snap.docs[0].data().message;
         alertBanner.classList.remove('hidden');
@@ -100,85 +84,111 @@
     }
 
     async function seedUserAndWallet(uid, email, name) {
-      const userRef   = doc(db,'users',uid);
-      const walletRef = doc(db,'wallets',uid);
+      const userRef = doc(db, 'users', uid);
+      const walletRef = doc(db, 'wallets', uid);
       if (!(await getDoc(userRef)).exists()) {
-        await setDoc(userRef, { email, username: name||email.split('@')[0], isAdmin:false, createdAt:serverTimestamp() });
+        await setDoc(userRef, { email, username: name || email.split('@')[0], isAdmin: false, createdAt: serverTimestamp() });
       }
       if (!(await getDoc(walletRef)).exists()) {
-        await setDoc(walletRef, { balance:0.00, lastUpdated:serverTimestamp() });
+        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
       }
       const wSnap = await getDoc(walletRef);
       return wSnap.data().balance;
     }
 
-    async function recordBet(bet, outcome, amountWon) {
-      await addDoc(collection(db,'bets'), { uid:userUid, game:'roulette', betNumber:bet, result:outcome, payout:amountWon, timestamp:serverTimestamp() });
-      await addDoc(collection(db,'transactions'), { uid:userUid, type: outcome==='win'?'game-win':'game-loss', amount: amountWon, timestamp:serverTimestamp() });
+    async function updateWallet(amount) {
+      const wRef = doc(db, 'wallets', userUid);
+      userBalance += amount;
+      await updateDoc(wRef, { balance: userBalance, lastUpdated: serverTimestamp() });
+      updateNavbar();
     }
 
-    async function updateWallet(amountDelta) {
-      const ref = doc(db,'wallets',userUid);
-      const snap = await getDoc(ref);
-      let bal = snap.exists()?snap.data().balance:0;
-      bal += amountDelta;
-      await updateDoc(ref,{ balance: bal, lastUpdated:serverTimestamp() });
-      return bal;
+    async function recordTransaction(type, amount) {
+      await addDoc(collection(db, 'transactions'), {
+        uid: userUid,
+        type,
+        amount,
+        timestamp: serverTimestamp()
+      });
     }
 
-    function animateWheel(outcome) {
+    async function recordBet(betNumber, resultNumber, outcome, payout) {
+      await addDoc(collection(db, 'bets'), {
+        uid: userUid,
+        game: 'roulette',
+        betNumber,
+        resultNumber,
+        outcome,
+        payout,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    function updateNavbar() {
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">Balance: ${userBalance.toFixed(2)} P</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      };
+    }
+
+    function animateWheel(resultNumber) {
       const spins = 5;
-      const degreePerSlot = 360/37;
-      const rotateTo = 360*spins + (37 - outcome)*degreePerSlot;
+      const degreePerSlot = 360 / 37;
+      const targetDegrees = 360 * spins + (37 - resultNumber) * degreePerSlot;
       wheel.style.transition = 'transform 4s ease-out';
-      wheel.style.transform = `rotate(${rotateTo}deg)`;
+      wheel.style.transform = `rotate(${targetDegrees}deg)`;
       wheel.addEventListener('transitionend', () => {
         wheel.style.transition = '';
         wheel.style.transform = '';
         spinBtn.disabled = false;
-      }, { once:true });
+      }, { once: true });
     }
 
     spinBtn.addEventListener('click', async () => {
-      const bet = parseInt(betInput.value,10);
-      if (isNaN(bet)||bet<0||bet>36) { resultEl.textContent='Enter a number between 0 and 36.'; return; }
-      spinBtn.disabled = true;
-      resultEl.textContent = '';
-
-      const outcome = Math.floor(Math.random()*37);
-      animateWheel(outcome);
-
-      const win = outcome===bet;
-      let payout = 0;
-      if (win) {
-        payout = bet * 36;
-        const newBal = await updateWallet(payout);
-        resultEl.textContent = `🎉 You won R${payout}! New bal: R${newBal.toFixed(2)}`;
-      } else {
-        resultEl.textContent = `💔 You lost. The ball landed on ${outcome}.`;
+      const betNum = parseInt(betInput.value, 10);
+      if (isNaN(betNum) || betNum < 0 || betNum > 36) {
+        resultEl.textContent = '❌ Enter a valid number between 0 and 36.';
+        return;
       }
-      await recordBet(bet, win?'win':'lose', payout);
+      if (userBalance < 1) {
+        resultEl.textContent = '❌ Not enough Paks to spin.';
+        return;
+      }
+
+      spinBtn.disabled = true;
+      await updateWallet(-1);
+      await recordTransaction('game-bet', -1);
+
+      const resultNum = Math.floor(Math.random() * 37);
+      animateWheel(resultNum);
+
+      if (betNum === resultNum) {
+        const payout = 36;
+        await updateWallet(payout);
+        await recordTransaction('game-win', payout);
+        await recordBet(betNum, resultNum, 'win', payout);
+        resultEl.textContent = `🎉 The ball landed on ${resultNum}! You won ${payout} Paks!`;
+      } else {
+        await recordBet(betNum, resultNum, 'lose', 0);
+        resultEl.textContent = `💔 The ball landed on ${resultNum}. You lost.`;
+      }
     });
 
     onAuthStateChanged(auth, async user => {
       await loadLatestAlert();
-      if (!user || (!user.emailVerified && user.providerData[0].providerId!=='google.com')) {
+      if (!user || (!user.emailVerified && user.providerData[0].providerId !== 'google.com')) {
         await signOut(auth);
-        return window.location.href='auth.html';
+        return window.location.href = 'auth.html';
       }
       userUid = user.uid;
-      const bal = await seedUserAndWallet(user.uid, user.email, user.displayName);
-      greeting.textContent = `Welcome, ${user.displayName||'Player'} — R${bal.toFixed(2)}`;
-      navUserMenu.innerHTML = `
-        <li><span class="font-semibold">${user.displayName||user.email} — R${bal.toFixed(2)}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
-      `;
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await signOut(auth);
-        window.location.href='auth.html';
-      });
+      userBalance = await seedUserAndWallet(user.uid, user.email, user.displayName);
+      greeting.textContent = `Welcome, ${user.displayName || 'Player'} — ${userBalance.toFixed(2)} P`;
+      updateNavbar();
     });
-
   </script>
 </body>
 </html>
