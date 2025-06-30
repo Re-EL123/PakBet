@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Admin Alerts</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-gray-800 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <span class="text-2xl font-bold text-green-500">PakBet Admin</span>
+      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">
+        Logout
+      </button>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="flex-grow max-w-3xl mx-auto px-4 py-12 space-y-8">
+    <h1 class="text-4xl font-extrabold text-center">Post Site-Wide Alert</h1>
+
+    <div class="bg-gray-800 p-6 rounded-xl space-y-4">
+      <textarea
+        id="alertMessage"
+        rows="4"
+        placeholder="Enter your announcement..."
+        class="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+      ></textarea>
+
+      <button id="postAlertBtn" class="bg-green-500 px-6 py-2 rounded font-bold hover:bg-green-600">
+        Post Alert
+      </button>
+
+      <div id="statusMsg" class="text-sm text-gray-300"></div>
+    </div>
+
+    <section>
+      <h2 class="text-2xl font-semibold text-green-400 mb-2">Latest Alert</h2>
+      <div id="latestAlert" class="bg-gray-800 p-4 rounded-xl text-gray-300">Loading…</div>
+    </section>
+  </main>
+
+  <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
+    &copy; 2025 PakBet Admin
+  </footer>
+
+  <!-- Firebase SDK & Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      orderBy,
+      limit,
+      query,
+      getDocs,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    getAnalytics(app);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const postAlertBtn  = document.getElementById('postAlertBtn');
+    const alertMessage  = document.getElementById('alertMessage');
+    const statusMsg     = document.getElementById('statusMsg');
+    const latestAlert   = document.getElementById('latestAlert');
+
+    async function loadLatestAlert() {
+      const q    = query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        latestAlert.textContent = snap.docs[0].data().message;
+      } else {
+        latestAlert.textContent = 'No alerts posted yet.';
+      }
+    }
+
+    async function postAlert() {
+      const msg = alertMessage.value.trim();
+      if (msg.length < 5) {
+        statusMsg.textContent = 'Message too short. Must be at least 5 characters.';
+        return;
+      }
+      try {
+        await addDoc(collection(db,'alerts'), {
+          message: msg,
+          timestamp: serverTimestamp()
+        });
+        statusMsg.textContent = '✅ Alert posted successfully!';
+        alertMessage.value = '';
+        loadLatestAlert();
+      } catch (error) {
+        statusMsg.textContent = '❌ Error posting alert: ' + error.message;
+      }
+    }
+
+    postAlertBtn.addEventListener('click', postAlert);
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        return window.location.href = 'auth.html';
+      }
+      const userRef = (await import("https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js")).doc(db, 'users', user.uid);
+      const userSnap = await (await import("https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js")).getDoc(userRef);
+      if (!userSnap.exists() || !userSnap.data().isAdmin) {
+        await signOut(auth);
+        return window.location.href = 'auth.html';
+      }
+      loadLatestAlert();
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = 'auth.html';
+    });
+  </script>
+
+</body>
+</html>
