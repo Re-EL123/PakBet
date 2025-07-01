@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PakBet — Voucher Deposit</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #10B981;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
@@ -24,11 +39,11 @@
              class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg tracking-widest"/>
 
       <button id="submitVoucher"
-              class="bg-green-500 hover:bg-green-600 w-full py-3 rounded font-bold text-lg">
-        Submit Voucher
+              class="bg-green-500 hover:bg-green-600 w-full py-3 rounded font-bold text-lg flex items-center justify-center space-x-2">
+        <span>Submit Voucher</span>
       </button>
 
-      <p id="statusMessage" class="text-center text-sm text-gray-400"></p>
+      <p id="statusMessage" class="text-center text-sm"></p>
     </div>
   </main>
 
@@ -38,8 +53,8 @@
 
   <!-- Firebase + Logic -->
   <script type="module">
-    import { initializeApp }                                 from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged }                   from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -51,34 +66,63 @@
       appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const db = getFirestore(app);
 
     const voucherCodeEl = document.getElementById('voucherCode');
-    const statusMsg     = document.getElementById('statusMessage');
-    const submitBtn     = document.getElementById('submitVoucher');
+    const statusMsg = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitVoucher');
     const voucherTypeEl = document.getElementById('voucherTypeDisplay');
 
-    // Get URL Params
     const urlParams = new URLSearchParams(window.location.search);
-    const type      = urlParams.get('type') || 'voucher';
-    const ref       = urlParams.get('ref')  || '';
-    const amount    = urlParams.get('amount') || '';
+    const type = urlParams.get('type') || 'voucher';
+    const ref = urlParams.get('ref') || '';
+    const amount = urlParams.get('amount') || '';
 
     voucherTypeEl.textContent = `Deposit Method: ${type === 'flashvoucher' ? 'Flash Voucher' : '1-Voucher'}`;
 
+    let currentUser = null;
+
     onAuthStateChanged(auth, user => {
       if (!user) return window.location.href = 'auth.html';
+      currentUser = user;
+    });
 
-      submitBtn.onclick = async () => {
-        const code = voucherCodeEl.value.trim();
-        if (code.length !== 16 || !/^\d+$/.test(code)) {
-          return statusMsg.textContent = 'Enter a valid 16-digit numeric voucher code.';
-        }
+    function showLoading() {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner"></span> <span>Submitting...</span>`;
+    }
 
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>Submit Voucher</span>`;
+    }
+
+    function showStatus(message, color='text-gray-400') {
+      statusMsg.className = `text-center text-sm mt-2 ${color}`;
+      statusMsg.textContent = message;
+    }
+
+    submitBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        showStatus('Please wait... still verifying user session.', 'text-yellow-400');
+        return;
+      }
+
+      const code = voucherCodeEl.value.trim();
+      if (code.length !== 16 || !/^\d+$/.test(code)) {
+        showStatus('❌ Enter a valid 16-digit numeric voucher code.', 'text-red-400');
+        return;
+      }
+
+      showLoading();
+      showStatus('');
+
+      try {
         await addDoc(collection(db, 'pending_vouchers'), {
-          uid: user.uid,
+          uid: currentUser.uid,
           voucherType: type,
           voucherCode: code,
           reference: ref,
@@ -87,9 +131,12 @@
           timestamp: serverTimestamp()
         });
 
-        statusMsg.textContent = 'Voucher submitted! Await admin approval.';
-        submitBtn.disabled = true;
-      };
+        showStatus('✅ Voucher submitted successfully! Await admin approval.', 'text-green-400');
+      } catch (error) {
+        console.error('Error submitting voucher:', error);
+        showStatus('❌ Failed to submit. Please try again later.', 'text-red-400');
+        resetButton();
+      }
     });
   </script>
 </body>
