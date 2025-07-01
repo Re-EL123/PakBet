@@ -3,64 +3,61 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Withdraw — PakBet</title>
+  <title>PakBet — Withdraw Funds</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #10B981;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Navbar -->
-  <nav class="bg-gray-800 shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+  <!-- Header -->
+  <header class="bg-gray-800 shadow-md">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
-      <ul id="navUserMenu" class="flex items-center space-x-6">
-        <!-- JS populated -->
-      </ul>
     </div>
-    <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
-  </nav>
+  </header>
 
-  <!-- Withdraw Content -->
-  <main class="flex-grow flex items-center justify-center px-4">
-    <div class="bg-gray-800 p-8 rounded shadow-md w-full max-w-md text-center space-y-4">
-      <div id="greeting" class="text-lg text-gray-300"></div>
-      <h1 class="text-2xl font-bold">Withdraw Funds</h1>
+  <main class="flex-grow max-w-2xl mx-auto px-4 py-12 space-y-8">
+    <h1 class="text-3xl font-bold text-center mb-4">Withdraw Funds</h1>
 
-      <!-- Amount -->
-      <input id="withdrawAmount" type="number" placeholder="Enter amount" class="w-full p-2 rounded bg-gray-700 text-white focus:outline-none" />
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
+      <input id="withdrawAmount" type="number" min="1" placeholder="Enter Amount (Rands)"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
 
-      <!-- Withdraw Button -->
-      <button id="withdrawBtn" class="w-full bg-yellow-500 hover:bg-yellow-600 py-2 rounded font-bold disabled:opacity-50">
-        Withdraw
+      <input id="withdrawRef" type="text" placeholder="Payment Method (e.g. Capitec, FNB, etc)"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
+
+      <button id="submitWithdraw"
+              class="bg-green-500 hover:bg-green-600 w-full py-3 rounded font-bold text-lg flex items-center justify-center space-x-2">
+        <span>Submit Withdrawal</span>
       </button>
 
-      <p id="status" class="mt-2 text-sm text-gray-400"></p>
+      <p id="statusMessage" class="text-center text-sm"></p>
     </div>
   </main>
 
-  <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
-    &copy; 2025 PakBet
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
+  <!-- Firebase + Logic -->
   <script type="module">
-    import { initializeApp }               from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAnalytics }                from "https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      updateDoc,
-      serverTimestamp,
-      collection,
-      addDoc,
-      query,
-      orderBy,
-      limit,
-      getDocs
-    }                                     from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
-    // Placeholder for payout API integration
-    // import BankingAPI from 'banking-js-sdk';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -71,101 +68,74 @@
       appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
       measurementId: "G-QPLND82T33"
     };
-    const app  = initializeApp(firebaseConfig);
-    getAnalytics(app);
+
+    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
-    const db   = getFirestore(app);
+    const db = getFirestore(app);
 
-    const navUserMenu  = document.getElementById('navUserMenu');
-    const alertBanner  = document.getElementById('alertBanner');
-    const greetingEl   = document.getElementById('greeting');
-    const amountInput  = document.getElementById('withdrawAmount');
-    const withdrawBtn  = document.getElementById('withdrawBtn');
-    const statusEl     = document.getElementById('status');
+    const amountEl = document.getElementById('withdrawAmount');
+    const refEl = document.getElementById('withdrawRef');
+    const statusMsg = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitWithdraw');
 
-    async function loadLatestAlert() {
-      const q = query(collection(db, 'alerts'), orderBy('timestamp','desc'), limit(1));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        alertBanner.textContent = snap.docs[0].data().message;
-        alertBanner.classList.remove('hidden');
-      }
+    let currentUser = null;
+
+    onAuthStateChanged(auth, user => {
+      if (!user) return window.location.href = 'auth.html';
+      currentUser = user;
+    });
+
+    function showLoading() {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner"></span> <span>Submitting...</span>`;
     }
 
-    async function ensureWallet(uid) {
-      const wRef = doc(db, 'wallets', uid);
-      const wSnap = await getDoc(wRef);
-      if (!wSnap.exists()) {
-        await setDoc(wRef, { balance: 0.00, lastUpdated: serverTimestamp() });
-        return 0.00;
-      }
-      return wSnap.data().balance;
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>Submit Withdrawal</span>`;
     }
 
-    // Stub for payout processing
-    async function processPayout(uid, amount) {
-      // TODO: integrate banking/disbursement API here
-      return Promise.resolve({ success: true });
+    function showStatus(message, color='text-gray-400') {
+      statusMsg.className = `text-center text-sm mt-2 ${color}`;
+      statusMsg.textContent = message;
     }
 
-    onAuthStateChanged(auth, async user => {
-      await loadLatestAlert();
-      if (!user) {
-        greetingEl.textContent = 'Please log in to withdraw funds.';
-        withdrawBtn.disabled = true;
+    submitBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        showStatus('Please wait... verifying user session.', 'text-yellow-400');
         return;
       }
 
-      const currBalance = await ensureWallet(user.uid);
+      const amount = parseFloat(amountEl.value.trim());
+      const paymentRef = refEl.value.trim();
 
-      // Navbar
-      navUserMenu.innerHTML = `
-        <li><span class="font-semibold">${user.displayName || user.email} — R${currBalance.toFixed(2)}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
-      `;
-      document.getElementById('logoutBtn').addEventListener('click', async () => {
-        await signOut(auth);
-        window.location.href = 'auth.html';
-      });
+      if (isNaN(amount) || amount <= 0) {
+        showStatus('❌ Enter a valid withdrawal amount.', 'text-red-400');
+        return;
+      }
+      if (!paymentRef) {
+        showStatus('❌ Please enter a payment method or reference.', 'text-red-400');
+        return;
+      }
 
-      greetingEl.textContent = `Hello, ${user.displayName || 'Player'}! Your balance: R${currBalance.toFixed(2)}.`;
+      showLoading();
+      showStatus('');
 
-      withdrawBtn.addEventListener('click', async () => {
-        const amt = parseFloat(amountInput.value);
-        if (isNaN(amt) || amt <= 0) {
-          statusEl.textContent = 'Enter a valid withdrawal amount.';
-          return;
-        }
-        if (amt > currBalance) {
-          statusEl.textContent = 'Insufficient funds.';
-          return;
-        }
-
-        withdrawBtn.disabled = true;
-        statusEl.textContent = 'Processing withdrawal…';
-
-        const payout = await processPayout(user.uid, amt);
-        if (!payout.success) {
-          statusEl.textContent = 'Withdrawal failed. Please try later.';
-          withdrawBtn.disabled = false;
-          return;
-        }
-
-        const wRef = doc(db, 'wallets', user.uid);
-        const newBal = currBalance - amt;
-        await updateDoc(wRef, { balance: newBal, lastUpdated: serverTimestamp() });
-        await addDoc(collection(db, 'transactions'), {
-          uid: user.uid,
-          type: 'withdrawal',
-          amount: amt,
+      try {
+        await addDoc(collection(db, 'pending_withdrawals'), {
+          uid: currentUser.uid,
+          amount: amount,
+          paymentReference: paymentRef,
+          status: 'pending',
           timestamp: serverTimestamp()
         });
 
-        greetingEl.textContent = `Hello, ${user.displayName || 'Player'}! New balance: R${newBal.toFixed(2)}.`;
-        statusEl.textContent = `Withdrew R${amt.toFixed(2)} successfully.`;
-        withdrawBtn.disabled = false;
-        amountInput.value = '';
-      });
+        showStatus('✅ Withdrawal request submitted! Await admin approval.', 'text-green-400');
+      } catch (error) {
+        console.error('Error submitting withdrawal:', error);
+        showStatus('❌ Failed to submit. Try again later.', 'text-red-400');
+        resetButton();
+      }
     });
   </script>
 </body>
