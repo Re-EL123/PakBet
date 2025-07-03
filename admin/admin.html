@@ -8,135 +8,149 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
 
-<header class="bg-gray-800 p-4 flex justify-between items-center">
-  <h1 class="text-3xl font-bold text-green-400">PakBet Admin Dashboard</h1>
-  <div class="space-x-4">
-    <a href="manage_games.html" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Manage Games</a>
-    <a href="admin_alert.html" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Send Alert</a>
-  </div>
-</header>
+  <!-- Header -->
+  <header class="bg-gray-800 p-4 flex justify-between items-center">
+    <h1 class="text-3xl font-bold text-green-400">PakBet Admin Dashboard</h1>
+    <nav class="space-x-2">
+      <a href="admin_users.html" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Users</a>
+      <a href="admin_bets.html" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded">Bets</a>
+      <a href="admin_vouchers.html" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Vouchers</a>
+      <a href="admin_alert.html" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Send Alert</a>
+      <a href="manage_games.html" class="bg-pink-600 hover:bg-pink-700 px-4 py-2 rounded">Manage Games</a>
+    </nav>
+  </header>
 
-<main class="max-w-6xl mx-auto p-6 space-y-10">
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto p-6 space-y-10">
 
-  <!-- Voucher Filter -->
-  <section>
-    <h2 class="text-xl font-bold mb-2">Pending Vouchers by Type</h2>
-    <select id="voucherTypeFilter" class="p-2 bg-gray-700 rounded text-white mb-4">
-      <option value="">All Types</option>
-      <option value="voucher">1-Voucher</option>
-      <option value="flashvoucher">Flash Voucher</option>
-    </select>
-    <div id="pendingVouchers" class="space-y-3 bg-gray-800 p-4 rounded"></div>
-  </section>
+    <!-- Voucher Filter -->
+    <section>
+      <h2 class="text-xl font-bold mb-2">Pending Vouchers by Type</h2>
+      <select id="voucherTypeFilter" class="p-2 bg-gray-700 rounded text-white mb-4">
+        <option value="">All Types</option>
+        <option value="voucher">1-Voucher</option>
+        <option value="flashvoucher">Flash Voucher</option>
+        <option value="easyload">EasyLoad</option>
+      </select>
+      <div id="pendingVouchers" class="space-y-3 bg-gray-800 p-4 rounded"></div>
+    </section>
 
-  <!-- Full Voucher History -->
-  <section>
-    <h2 class="text-xl font-bold mb-2">All Voucher History</h2>
-    <div id="voucherHistory" class="space-y-3 bg-gray-800 p-4 rounded"></div>
-  </section>
+    <!-- Full Voucher History -->
+    <section>
+      <h2 class="text-xl font-bold mb-2">All Voucher History</h2>
+      <div id="voucherHistory" class="space-y-3 bg-gray-800 p-4 rounded"></div>
+    </section>
 
-</main>
+  </main>
 
-<footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
-  &copy; 2025 PakBet Admin Panel
-</footer>
+  <!-- Footer -->
+  <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
+    &copy; 2025 PakBet Admin Panel
+  </footer>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { getFirestore, collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-functions.js";
+  <!-- Firebase Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getFirestore, collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-functions.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
-  authDomain: "pakbet-b0abe.firebaseapp.com",
-  projectId: "pakbet-b0abe",
-  storageBucket: "pakbet-b0abe.appspot.com",
-  messagingSenderId: "499452911724",
-  appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
+    };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const functions = getFunctions(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const functions = getFunctions(app);
 
-let adminUid = '';
+    let adminUid = '';
 
-onAuthStateChanged(auth, user => {
-  if (!user) return window.location.href = '../auth.html';
-  adminUid = user.uid;
-  loadPendingVouchers();
-  loadVoucherHistory();
-});
+    onAuthStateChanged(auth, user => {
+      if (!user) return window.location.href = 'auth.html';
+      adminUid = user.uid;
+      loadPendingVouchers();
+      loadVoucherHistory();
+    });
 
-document.getElementById('voucherTypeFilter').addEventListener('change', loadPendingVouchers);
+    document.getElementById('voucherTypeFilter').addEventListener('change', loadPendingVouchers);
 
-async function loadPendingVouchers() {
-  const typeFilter = document.getElementById('voucherTypeFilter').value;
-  let q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'));
-  if (typeFilter) q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'), where('type', '==', typeFilter));
+    async function loadPendingVouchers() {
+      const type = document.getElementById('voucherTypeFilter').value;
+      let q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'));
+      if (type) {
+        q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'), where('type', '==', type));
+      }
 
-  const snap = await getDocs(q);
-  const container = document.getElementById('pendingVouchers');
-  container.innerHTML = '';
-  if (snap.empty) {
-    container.innerHTML = '<p>No pending vouchers for this type.</p>';
-    return;
-  }
+      const snap = await getDocs(q);
+      const container = document.getElementById('pendingVouchers');
+      container.innerHTML = '';
 
-  snap.forEach(docSnap => {
-    const v = docSnap.data();
-    const el = document.createElement('div');
-    el.className = 'bg-gray-700 p-3 rounded';
-    el.innerHTML = `
-      <p><strong>User:</strong> ${v.uid}</p>
-      <p><strong>Amount:</strong> R${v.amount}</p>
-      <p><strong>Type:</strong> ${v.type}</p>
-      <div class="space-x-2 mt-2">
-        <button onclick="handleVoucher('${docSnap.id}', 'approved')" class="bg-green-500 px-3 py-1 rounded">Approve</button>
-        <button onclick="handleVoucher('${docSnap.id}', 'rejected')" class="bg-red-500 px-3 py-1 rounded">Reject</button>
-      </div>
-    `;
-    container.appendChild(el);
-  });
-}
+      if (snap.empty) {
+        container.innerHTML = '<p>No pending vouchers.</p>';
+        return;
+      }
 
-window.handleVoucher = async (id, action) => {
-  const ref = doc(db, 'pending_vouchers', id);
-  await updateDoc(ref, {
-    status: action,
-    actionBy: adminUid,
-    actionAt: serverTimestamp()
-  });
+      snap.forEach(docSnap => {
+        const v = docSnap.data();
+        const div = document.createElement('div');
+        div.className = 'bg-gray-700 p-3 rounded';
+        div.innerHTML = `
+          <p><strong>User:</strong> ${v.uid}</p>
+          <p><strong>Amount:</strong> R${v.amount || 'Unknown'}</p>
+          <p><strong>Type:</strong> ${v.type}</p>
+          <p><strong>Ref:</strong> ${v.reference}</p>
+          <div class="space-x-2 mt-2">
+            <button onclick="handleVoucher('${docSnap.id}', 'approved')" class="bg-green-500 px-3 py-1 rounded">Approve</button>
+            <button onclick="handleVoucher('${docSnap.id}', 'rejected')" class="bg-red-500 px-3 py-1 rounded">Reject</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
 
-  // Send email notification via Cloud Function
-  const sendEmail = httpsCallable(functions, 'sendVoucherDecisionEmail');
-  await sendEmail({ voucherId: id, status: action });
+    window.handleVoucher = async (id, action) => {
+      const ref = doc(db, 'pending_vouchers', id);
+      await updateDoc(ref, {
+        status: action,
+        actionBy: adminUid,
+        actionAt: serverTimestamp()
+      });
 
-  alert(`✅ Voucher ${action}`);
-  loadPendingVouchers();
-  loadVoucherHistory();
-};
+      try {
+        const sendEmail = httpsCallable(functions, 'sendVoucherDecisionEmail');
+        await sendEmail({ voucherId: id, status: action });
+      } catch (e) {
+        console.warn('Email failed:', e.message);
+      }
 
-async function loadVoucherHistory() {
-  const snap = await getDocs(query(collection(db, 'pending_vouchers'), orderBy('timestamp', 'desc')));
-  const container = document.getElementById('voucherHistory');
-  container.innerHTML = '';
+      alert(`✅ Voucher ${action}`);
+      loadPendingVouchers();
+      loadVoucherHistory();
+    };
 
-  snap.forEach(docSnap => {
-    const v = docSnap.data();
-    const el = document.createElement('div');
-    el.className = `p-2 rounded ${v.status === 'approved' ? 'bg-green-700' : v.status === 'rejected' ? 'bg-red-700' : 'bg-gray-700'}`;
-    el.innerHTML = `
-      <p><strong>${v.status.toUpperCase()}</strong> | ${v.type}</p>
-      <p>User: ${v.uid} | Amount: R${v.amount}</p>
-      <p>Ref: ${v.reference}</p>
-    `;
-    container.appendChild(el);
-  });
-}
-</script>
+    async function loadVoucherHistory() {
+      const snap = await getDocs(query(collection(db, 'pending_vouchers'), orderBy('timestamp', 'desc')));
+      const container = document.getElementById('voucherHistory');
+      container.innerHTML = '';
 
+      snap.forEach(docSnap => {
+        const v = docSnap.data();
+        const div = document.createElement('div');
+        div.className = `p-3 rounded ${v.status === 'approved' ? 'bg-green-700' : v.status === 'rejected' ? 'bg-red-700' : 'bg-gray-700'}`;
+        div.innerHTML = `
+          <p><strong>Status:</strong> ${v.status.toUpperCase()} | <strong>Type:</strong> ${v.type}</p>
+          <p><strong>User:</strong> ${v.uid} | <strong>Amount:</strong> R${v.amount || 'Unknown'}</p>
+          <p><strong>Ref:</strong> ${v.reference || 'N/A'}</p>
+        `;
+        container.appendChild(div);
+      });
+    }
+  </script>
 </body>
 </html>
