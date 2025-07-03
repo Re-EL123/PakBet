@@ -35,7 +35,7 @@
     <p id="voucherTypeDisplay" class="text-center text-lg text-gray-300"></p>
 
     <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
-      <input id="voucherCode" type="text" maxlength="16" placeholder="Enter 16-digit Voucher Code"
+      <input id="voucherCode" type="text" placeholder=""
              class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg tracking-widest"/>
 
       <button id="submitVoucher"
@@ -81,7 +81,21 @@
     const ref = urlParams.get('ref') || '';
     const amount = urlParams.get('amount') || '';
 
-    voucherTypeEl.textContent = `Deposit Method: ${type === 'flashvoucher' ? 'Flash Voucher' : '1-Voucher'}`;
+    const voucherNames = {
+      voucher: '1-Voucher (16 digits)',
+      flashvoucher: 'Flash Voucher (16 digits)',
+      easyload: 'EasyLoad Voucher (14 digits)'
+    };
+
+    // Set label + input config based on type
+    voucherTypeEl.textContent = `Deposit Method: ${voucherNames[type] || '1-Voucher (16 digits)'}`;
+    if (type === 'easyload') {
+      voucherCodeEl.placeholder = 'Enter 14-digit EasyLoad Voucher Code';
+      voucherCodeEl.maxLength = 14;
+    } else {
+      voucherCodeEl.placeholder = 'Enter 16-digit Voucher Code';
+      voucherCodeEl.maxLength = 16;
+    }
 
     let currentUser = null;
 
@@ -100,7 +114,7 @@
       submitBtn.innerHTML = `<span>Submit Voucher</span>`;
     }
 
-    function showStatus(message, color='text-gray-400') {
+    function showStatus(message, color = 'text-gray-400') {
       statusMsg.className = `text-center text-sm mt-2 ${color}`;
       statusMsg.textContent = message;
     }
@@ -112,8 +126,10 @@
       }
 
       const code = voucherCodeEl.value.trim();
-      if (code.length !== 16 || !/^\d+$/.test(code)) {
-        showStatus('❌ Enter a valid 16-digit numeric voucher code.', 'text-red-400');
+      const expectedLength = type === 'easyload' ? 14 : 16;
+
+      if (code.length !== expectedLength || !/^\d+$/.test(code)) {
+        showStatus(`❌ Enter a valid ${expectedLength}-digit numeric voucher code.`, 'text-red-400');
         return;
       }
 
@@ -135,6 +151,7 @@
       } catch (error) {
         console.error('Error submitting voucher:', error);
         showStatus('❌ Failed to submit. Please try again later.', 'text-red-400');
+      } finally {
         resetButton();
       }
     });
