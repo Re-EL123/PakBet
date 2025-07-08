@@ -20,7 +20,6 @@
     </nav>
   </header>
 
-  <!-- Main -->
   <main class="max-w-6xl mx-auto p-6 space-y-10">
 
     <!-- Voucher Filter -->
@@ -38,20 +37,22 @@
     <!-- Full Voucher History -->
     <section>
       <h2 class="text-xl font-bold mb-2">All Voucher History</h2>
+      <button id="exportBtn" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded mb-3">Export CSV</button>
       <div id="voucherHistory" class="space-y-3 bg-gray-800 p-4 rounded"></div>
     </section>
 
   </main>
 
-  <!-- Footer -->
   <footer class="bg-gray-800 text-center py-4 text-gray-400 text-sm">
     &copy; 2025 PakBet Admin Panel
   </footer>
 
-  <!-- Firebase Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getFirestore, collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, collection, query, where, orderBy, getDocs,
+      updateDoc, doc, serverTimestamp, getDoc, setDoc
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-functions.js";
 
@@ -68,8 +69,8 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     const functions = getFunctions(app);
-
     let adminUid = '';
+    let allVoucherData = [];
 
     onAuthStateChanged(auth, user => {
       if (!user) return window.location.href = 'auth.html';
@@ -84,7 +85,7 @@
       const type = document.getElementById('voucherTypeFilter').value;
       let q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'));
       if (type) {
-        q = query(collection(db, 'pending_vouchers'), where('status', '==', 'pending'), where('type', '==', type));
+        q = query(q, where('voucherType', '==', type));
       }
 
       const snap = await getDocs(q);
@@ -99,37 +100,82 @@
       snap.forEach(docSnap => {
         const v = docSnap.data();
         const div = document.createElement('div');
-        div.className = 'bg-gray-700 p-3 rounded';
+        div.className = 'bg-gray-700 p-3 rounded space-y-1';
         div.innerHTML = `
           <p><strong>User:</strong> ${v.uid}</p>
-          <p><strong>Amount:</strong> R${v.amount || 'Unknown'}</p>
-          <p><strong>Type:</strong> ${v.type}</p>
-          <p><strong>Ref:</strong> ${v.reference}</p>
-          <div class="space-x-2 mt-2">
-            <button onclick="handleVoucher('${docSnap.id}', 'approved')" class="bg-green-500 px-3 py-1 rounded">Approve</button>
-            <button onclick="handleVoucher('${docSnap.id}', 'rejected')" class="bg-red-500 px-3 py-1 rounded">Reject</button>
+          <p><strong>Voucher Code:</strong> ${v.voucherCode || 'N/A'}</p>
+          <p><strong>Type:</strong> ${v.voucherType || 'N/A'}</p>
+          <p><strong>Reference:</strong> ${v.reference || 'N/A'}</p>
+          <input id="amt-${docSnap.id}" type="number" min="1" placeholder="Enter amount in Rands" class="p-2 w-full bg-gray-800 rounded text-white my-2"/>
+          <div class="space-x-2">
+            <button onclick="handleApprove('${docSnap.id}', '${v.uid}')" class="bg-green-500 hover:bg-green-600 px-3 py-1 rounded">Approve</button>
+            <button onclick="handleReject('${docSnap.id}')" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded">Reject</button>
           </div>
         `;
         container.appendChild(div);
       });
     }
 
-    window.handleVoucher = async (id, action) => {
+    window.handleApprove = async (id, uid) => {
+      const amountInput = document.getElementById(`amt-${id}`);
+      const amount = parseFloat(amountInput.value);
+      if (!amount || amount <= 0) {
+        alert('Please enter a valid amount before approving.');
+        return;
+      }
+
       const ref = doc(db, 'pending_vouchers', id);
       await updateDoc(ref, {
-        status: action,
+        amount,
+        status: 'approved',
+        actionBy: adminUid,
+        actionAt: serverTimestamp()
+      });
+
+      // CREDIT BALANCE TO USER WALLET
+      const walletRef = doc(db, 'wallets', uid);
+      const walletSnap = await getDoc(walletRef);
+      if (walletSnap.exists()) {
+        const prev = walletSnap.data().balance || 0;
+        await updateDoc(walletRef, {
+          balance: prev + amount,
+          lastUpdated: serverTimestamp()
+        });
+      } else {
+        await setDoc(walletRef, {
+          balance: amount,
+          lastUpdated: serverTimestamp()
+        });
+      }
+
+      try {
+        const sendEmail = httpsCallable(functions, 'sendVoucherDecisionEmail');
+        await sendEmail({ voucherId: id, status: 'approved', amount });
+      } catch (e) {
+        console.warn('Email failed:', e.message);
+      }
+
+      alert('✅ Voucher approved and balance credited.');
+      loadPendingVouchers();
+      loadVoucherHistory();
+    };
+
+    window.handleReject = async (id) => {
+      const ref = doc(db, 'pending_vouchers', id);
+      await updateDoc(ref, {
+        status: 'rejected',
         actionBy: adminUid,
         actionAt: serverTimestamp()
       });
 
       try {
         const sendEmail = httpsCallable(functions, 'sendVoucherDecisionEmail');
-        await sendEmail({ voucherId: id, status: action });
+        await sendEmail({ voucherId: id, status: 'rejected' });
       } catch (e) {
         console.warn('Email failed:', e.message);
       }
 
-      alert(`✅ Voucher ${action}`);
+      alert('❌ Voucher rejected.');
       loadPendingVouchers();
       loadVoucherHistory();
     };
@@ -138,19 +184,37 @@
       const snap = await getDocs(query(collection(db, 'pending_vouchers'), orderBy('timestamp', 'desc')));
       const container = document.getElementById('voucherHistory');
       container.innerHTML = '';
+      allVoucherData = [];
 
       snap.forEach(docSnap => {
         const v = docSnap.data();
+        allVoucherData.push(v);
         const div = document.createElement('div');
         div.className = `p-3 rounded ${v.status === 'approved' ? 'bg-green-700' : v.status === 'rejected' ? 'bg-red-700' : 'bg-gray-700'}`;
         div.innerHTML = `
-          <p><strong>Status:</strong> ${v.status.toUpperCase()} | <strong>Type:</strong> ${v.type}</p>
-          <p><strong>User:</strong> ${v.uid} | <strong>Amount:</strong> R${v.amount || 'Unknown'}</p>
-          <p><strong>Ref:</strong> ${v.reference || 'N/A'}</p>
+          <p><strong>Status:</strong> ${v.status.toUpperCase()} | <strong>Type:</strong> ${v.voucherType || 'N/A'}</p>
+          <p><strong>User:</strong> ${v.uid} | <strong>Voucher Code:</strong> ${v.voucherCode || 'N/A'}</p>
+          <p><strong>Amount:</strong> R${v.amount || 'Unknown'} | <strong>Ref:</strong> ${v.reference || 'N/A'}</p>
         `;
         container.appendChild(div);
       });
     }
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      if (!allVoucherData.length) return alert('No data to export.');
+      const headers = ['uid', 'voucherCode', 'voucherType', 'reference', 'amount', 'status'];
+      const rows = allVoucherData.map(v =>
+        headers.map(h => v[h] || '')
+      );
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'voucher_report.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   </script>
 </body>
 </html>
