@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PakBet — Admin Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #10B981;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
 
@@ -18,8 +33,9 @@
            class="w-full p-3 mb-6 rounded bg-gray-700 text-white placeholder-gray-400"/>
 
     <button id="loginBtn"
-            class="w-full bg-green-500 hover:bg-green-600 py-3 rounded font-bold">
-      Login
+            class="w-full bg-green-500 hover:bg-green-600 py-3 rounded font-bold flex items-center justify-center space-x-2">
+      <span id="loginText">Login</span>
+      <span id="loginSpinner" class="spinner hidden"></span>
     </button>
 
     <p id="statusMsg" class="text-center text-sm mt-4 text-gray-300"></p>
@@ -29,7 +45,9 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, addDoc, collection, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -44,40 +62,64 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const emailInput = document.getElementById("email");
-    const passInput  = document.getElementById("password");
-    const loginBtn   = document.getElementById("loginBtn");
-    const statusMsg  = document.getElementById("statusMsg");
+    const emailInput   = document.getElementById("email");
+    const passInput    = document.getElementById("password");
+    const loginBtn     = document.getElementById("loginBtn");
+    const loginText    = document.getElementById("loginText");
+    const loginSpinner = document.getElementById("loginSpinner");
+    const statusMsg    = document.getElementById("statusMsg");
+
+    function showSpinner(show) {
+      loginSpinner.classList.toggle("hidden", !show);
+      loginText.textContent = show ? "Logging in..." : "Login";
+      loginBtn.disabled = show;
+    }
+
+    async function logAdminAttempt({ email, uid = null, success, error = null }) {
+      try {
+        await addDoc(collection(db, "admin_logins"), {
+          email,
+          uid,
+          success,
+          error,
+          timestamp: serverTimestamp()
+        });
+      } catch (err) {
+        console.warn("❗ Failed to log admin attempt:", err.message);
+      }
+    }
 
     loginBtn.onclick = async () => {
       const email = emailInput.value.trim();
       const pass = passInput.value.trim();
       statusMsg.textContent = '';
-      loginBtn.disabled = true;
-
       if (!email || !pass) {
         statusMsg.textContent = '❌ Enter email and password.';
-        loginBtn.disabled = false;
         return;
       }
+
+      showSpinner(true);
 
       try {
         const userCred = await signInWithEmailAndPassword(auth, email, pass);
         const user = userCred.user;
-        const userSnap = await getDoc(doc(db, "users", user.uid));
 
+        const userSnap = await getDoc(doc(db, "users", user.uid));
         if (!userSnap.exists() || !userSnap.data().isAdmin) {
+          await logAdminAttempt({ email, uid: user.uid, success: false, error: "Not an admin" });
           statusMsg.textContent = '❌ Access denied. Not an admin.';
-          loginBtn.disabled = false;
+          showSpinner(false);
           return;
         }
 
-        // Redirect to admin dashboard
-        window.location.href = 'admin_vouchers.html';
-      } catch (error) {
-        console.error('Login error:', error);
+        await logAdminAttempt({ email, uid: user.uid, success: true });
+        window.location.href = "admin_vouchers.html";
+
+      } catch (err) {
+        console.error("Login failed:", err.message);
+        await logAdminAttempt({ email, success: false, error: err.message });
         statusMsg.textContent = '❌ Invalid credentials or network issue.';
-        loginBtn.disabled = false;
+        showSpinner(false);
       }
     };
   </script>
