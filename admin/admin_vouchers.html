@@ -53,6 +53,7 @@
       where,
       orderBy,
       doc,
+      getDoc,
       updateDoc,
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
@@ -73,7 +74,6 @@
     const db   = getFirestore(app);
 
     let adminUid = '';
-
     const vouchersList = document.getElementById('vouchersList');
     const statusMsg    = document.getElementById('statusMsg');
 
@@ -81,9 +81,9 @@
       vouchersList.innerHTML = '<p class="text-gray-400">Loading vouchers…</p>';
       let q;
       if (statusFilter==='all') {
-        q = query(collection(db,'vouchers'), orderBy('timestamp','desc'));
+        q = query(collection(db,'pending_vouchers'), orderBy('timestamp','desc'));
       } else {
-        q = query(collection(db,'vouchers'), where('status','==',statusFilter), orderBy('timestamp','desc'));
+        q = query(collection(db,'pending_vouchers'), where('status','==',statusFilter), orderBy('timestamp','desc'));
       }
       const snap = await getDocs(q);
       vouchersList.innerHTML = '';
@@ -95,15 +95,17 @@
 
       snap.forEach(docSnap => {
         const v = docSnap.data();
-        const time = new Date(v.timestamp.seconds*1000).toLocaleString();
+        const time = new Date((v.timestamp?.seconds || 0)*1000).toLocaleString();
         const div = document.createElement('div');
         div.className = 'bg-gray-800 p-4 rounded-xl space-y-2';
 
         div.innerHTML = `
           <p><span class="font-semibold">User:</span> ${v.uid}</p>
-          <p><span class="font-semibold">Type:</span> ${v.type}</p>
-          <p><span class="font-semibold">Amount:</span> R${v.amount.toFixed(2)}</p>
+          <p><span class="font-semibold">Voucher Code:</span> ${v.voucherCode || 'N/A'}</p>
+          <p><span class="font-semibold">Type:</span> ${v.voucherType || v.type || 'N/A'}</p>
+          <p><span class="font-semibold">Amount:</span> R${(v.amount ?? 'Unknown')}</p>
           <p><span class="font-semibold">Status:</span> ${v.status}</p>
+          <p><span class="font-semibold">Reference:</span> ${v.reference || 'N/A'}</p>
           <p><span class="font-semibold">Requested:</span> ${time}</p>
           <div class="flex space-x-2 ${v.status==='pending'?'':'hidden'}">
             <button class="actionBtn bg-green-500 hover:bg-green-600 px-3 py-1 rounded text-sm" data-id="${docSnap.id}" data-action="approve">Approve</button>
@@ -115,7 +117,7 @@
     }
 
     async function updateVoucher(id, action) {
-      const ref = doc(db,'vouchers',id);
+      const ref = doc(db,'pending_vouchers',id);
       const updateData = {
         status: action,
         actionBy: adminUid,
@@ -157,6 +159,5 @@
       window.location.href = 'auth.html';
     });
   </script>
-
 </body>
 </html>
