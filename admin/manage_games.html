@@ -5,9 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PakBet — Manage Games</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .spinner {
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #10B981;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
+  <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet Admin</span>
@@ -16,11 +37,17 @@
   </nav>
 
   <main class="flex-grow max-w-5xl mx-auto px-4 py-8">
-    <h1 class="text-4xl font-extrabold mb-8">Manage Soccer Fixtures</h1>
+    <h1 class="text-4xl font-extrabold mb-6">Manage Fixtures</h1>
 
+    <!-- Add Fixture Form -->
     <div class="bg-gray-800 p-6 rounded-xl mb-12">
       <h2 class="text-2xl font-bold mb-4">Add New Fixture</h2>
       <form id="addFixtureForm" class="space-y-4">
+        <select id="gameType" class="w-full p-2 rounded bg-gray-700 text-white">
+          <option value="soccer">Soccer</option>
+          <option value="cricket">Cricket</option>
+          <option value="rugby">Rugby</option>
+        </select>
         <input id="homeTeam" type="text" placeholder="Home Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
         <input id="awayTeam" type="text" placeholder="Away Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
         <input id="league" type="text" placeholder="League" class="w-full p-2 rounded bg-gray-700 text-white" required>
@@ -34,11 +61,20 @@
       </form>
     </div>
 
-    <div>
-      <h2 class="text-2xl font-bold mb-4">Current Fixtures</h2>
-      <div id="fixturesList" class="space-y-4 text-gray-300">
-        <p>Loading fixtures...</p>
-      </div>
+    <!-- Filters -->
+    <div class="flex justify-between mb-4">
+      <select id="filterType" class="p-2 rounded bg-gray-800 text-white">
+        <option value="">All Types</option>
+        <option value="soccer">Soccer</option>
+        <option value="cricket">Cricket</option>
+        <option value="rugby">Rugby</option>
+      </select>
+      <input id="searchBox" type="text" placeholder="Search by team or league…" class="p-2 rounded bg-gray-700 text-white w-1/2"/>
+    </div>
+
+    <!-- Fixtures List -->
+    <div id="fixturesList" class="space-y-4 text-gray-300">
+      <div class="spinner mx-auto"></div>
     </div>
   </main>
 
@@ -46,18 +82,19 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet Admin</p>
   </footer>
 
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, addDoc, collection,
+      serverTimestamp, getDocs, deleteDoc, query, orderBy
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
       authDomain: "pakbet-b0abe.firebaseapp.com",
-      projectId: "pakbet-b0abe",
-      storageBucket: "pakbet-b0abe.appspot.com",
-      messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
+      projectId: "pakbet-b0abe"
     });
 
     const auth = getAuth(app);
@@ -66,43 +103,69 @@
     const navUserMenu = document.getElementById('navUserMenu');
     const fixturesList = document.getElementById('fixturesList');
     const addFixtureForm = document.getElementById('addFixtureForm');
+    const searchBox = document.getElementById('searchBox');
+    const filterType = document.getElementById('filterType');
 
-    let adminUid;
+    let adminUid = '';
+    let allFixtures = [];
 
     function updateNavbar(user) {
       navUserMenu.innerHTML = `
         <li><span class="font-semibold">${user.displayName || user.email}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
-      `;
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
       document.getElementById('logoutBtn').onclick = async () => {
         await signOut(auth);
         window.location.href = 'auth.html';
       };
     }
 
-    async function loadFixtures() {
-      fixturesList.innerHTML = '<p>Loading fixtures...</p>';
-      const snap = await getDocs(query(collection(db,'fixtures'), orderBy('date','asc')));
+    function renderFixtures() {
+      const search = searchBox.value.toLowerCase();
+      const typeFilter = filterType.value;
       fixturesList.innerHTML = '';
-      if (snap.empty) {
+
+      const filtered = allFixtures.filter(f =>
+        (!typeFilter || f.type === typeFilter) &&
+        (`${f.home} ${f.away} ${f.league}`.toLowerCase().includes(search))
+      );
+
+      if (filtered.length === 0) {
         fixturesList.innerHTML = '<p>No fixtures found.</p>';
         return;
       }
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
-        const date = new Date(data.date.seconds * 1000).toLocaleString();
-        fixturesList.innerHTML += `
-          <div class="bg-gray-700 p-4 rounded">
-            <h3 class="font-semibold">${data.home} vs ${data.away}</h3>
-            <p>${data.league} — ${date}</p>
-            <p>Odds: Home ${data.odds.home} | Draw ${data.odds.draw} | Away ${data.odds.away}</p>
-          </div>
+
+      filtered.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-700 p-4 rounded fade-in';
+        div.innerHTML = `
+          <h3 class="font-bold">${f.home} vs ${f.away} <span class="text-sm text-gray-400">[${f.type}]</span></h3>
+          <p>${f.league} — ${new Date(f.date.seconds * 1000).toLocaleString()}</p>
+          <p>Odds: Home ${f.odds.home} | Draw ${f.odds.draw} | Away ${f.odds.away}</p>
+          <button class="mt-2 bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm" onclick="deleteFixture('${f.id}')">Delete</button>
         `;
+        fixturesList.appendChild(div);
       });
     }
 
+    async function loadFixtures() {
+      const snap = await getDocs(query(collection(db,'fixtures'), orderBy('date','asc')));
+      allFixtures = [];
+      snap.forEach(docSnap => {
+        allFixtures.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      renderFixtures();
+    }
+
+    window.deleteFixture = async (id) => {
+      if (!confirm('Are you sure you want to delete this fixture?')) return;
+      await deleteDoc(doc(db, 'fixtures', id));
+      alert('Fixture deleted.');
+      loadFixtures();
+    };
+
     addFixtureForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const type = document.getElementById('gameType').value;
       const home = document.getElementById('homeTeam').value.trim();
       const away = document.getElementById('awayTeam').value.trim();
       const league = document.getElementById('league').value.trim();
@@ -117,7 +180,7 @@
       const timestamp = { seconds: Math.floor(date.getTime() / 1000) };
 
       await addDoc(collection(db,'fixtures'), {
-        home, away, league, date: timestamp, odds,
+        type, home, away, league, date: timestamp, odds,
         createdBy: adminUid,
         createdAt: serverTimestamp()
       });
@@ -127,13 +190,15 @@
       loadFixtures();
     });
 
+    searchBox.addEventListener('input', renderFixtures);
+    filterType.addEventListener('change', renderFixtures);
+
     onAuthStateChanged(auth, async user => {
-      if (!user) return window.location.href='auth.html';
-      const userRef = doc(db,'users',user.uid);
-      const snap = await getDoc(userRef);
+      if (!user) return window.location.href = 'auth.html';
+      const snap = await getDoc(doc(db, 'users', user.uid));
       if (!snap.exists() || !snap.data().isAdmin) {
         await signOut(auth);
-        return window.location.href='auth.html';
+        return window.location.href = 'auth.html';
       }
       adminUid = user.uid;
       updateNavbar(user);
