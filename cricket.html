@@ -1,3 +1,4 @@
+<!-- Full updated cricket.html below -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,16 +21,21 @@
     <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
     <h1 class="text-4xl font-extrabold mb-6">Cricket Betting</h1>
     <p class="text-gray-300 mb-8">Bet Paks on upcoming matches. Choose your team and wager.</p>
-
     <div id="matchesList" class="space-y-6"></div>
   </main>
 
-  <footer class="bg-gray-800 text-center py-6"><p class="text-gray-400 text-sm">&copy; 2025 PakBet</p></footer>
+  <footer class="bg-gray-800 text-center py-6">
+    <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
+  </footer>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, orderBy, limit, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, updateDoc,
+      collection, addDoc, query, where, orderBy, limit,
+      getDocs, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -102,7 +108,10 @@
       navUserMenu.innerHTML = `
         <li><span class="font-semibold">Balance: ${userBalance.toFixed(2)} P</span></li>
         <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
-      document.getElementById('logoutBtn').onclick = async () => { await signOut(auth); window.location.href='auth.html'; };
+      document.getElementById('logoutBtn').onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      };
     }
 
     async function loadMatches() {
@@ -119,11 +128,11 @@
         const data = docSnap.data();
         const date = new Date(data.date.seconds * 1000).toLocaleString();
         const card = document.createElement('div');
-        card.className = 'bg-gray-800 p-6 rounded-xl';
+        card.className = 'bg-gray-800 p-6 rounded-xl shadow';
 
         card.innerHTML = `
           <h2 class="text-2xl font-semibold mb-2">${data.home} vs ${data.away}</h2>
-          <p class="text-gray-400 mb-2">${data.format} — ${date}</p>
+          <p class="text-gray-400 mb-2">${data.league || data.format || 'Cricket'} — ${date}</p>
           <div class="flex items-center space-x-4 mb-2">
             <input type="number" placeholder="Bet Amount" class="betAmount w-32 p-2 rounded bg-gray-700 text-white" />
             <select class="selectedTeam bg-gray-700 text-white p-2 rounded">
@@ -145,7 +154,7 @@
           if (amount > userBalance) return resultEl.textContent = '❌ Not enough Paks.';
 
           await updateWallet(-amount);
-          await recordTransaction('game-bet', -amount);
+          await recordTransaction('cricket-bet', -amount);
           await recordBet(docSnap.id, team, amount);
 
           resultEl.textContent = `✅ Bet placed on ${team} for ${amount.toFixed(2)} P`;
