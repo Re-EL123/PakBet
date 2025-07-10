@@ -126,7 +126,7 @@
 
     async function loadMatches() {
       matchesList.innerHTML = '<p class="text-center text-gray-500">Loading cricket fixtures...</p>';
-      const snap = await getDocs(query(collection(db, 'fixtures'), where('sport', '==', 'cricket'), orderBy('date', 'asc')));
+      const snap = await getDocs(query(collection(db, 'fixtures'), where('type', '==', 'cricket'), orderBy('date', 'asc')));
       matchesList.innerHTML = '';
 
       if (snap.empty) {
