@@ -33,9 +33,9 @@
   <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
     <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
     <h1 class="text-4xl font-extrabold mb-6 text-center">⚽ Soccer Fixtures</h1>
-    <div id="fixturesList" class="space-y-4">
+    <div id="fixturesList" class="space-y-4 text-center">
       <div class="spinner"></div>
-      <p class="text-center text-gray-400 mt-4">Loading fixtures…</p>
+      <p class="text-gray-400 mt-4">Loading fixtures…</p>
     </div>
   </main>
 
@@ -46,7 +46,10 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, serverTimestamp, query, orderBy, getDocs, limit } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, updateDoc, collection,
+      addDoc, serverTimestamp, query, orderBy, getDocs, where, limit
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const app = initializeApp({
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -69,6 +72,127 @@
     let userBalance;
 
     async function loadLatestAlert() {
-      const snap = await getDocs(query(collection(db,'alerts'), orderBy('timestamp','desc'), limit(1)));
+      const snap = await getDocs(query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1)));
       if (!snap.empty) {
-        alertBanner.textContent =
+        alertBanner.textContent = snap.docs[0].data().message;
+        alertBanner.classList.remove('hidden');
+      }
+    }
+
+    async function seedUserAndWallet(uid, email, name) {
+      const userRef = doc(db, 'users', uid);
+      const walletRef = doc(db, 'wallets', uid);
+      if (!(await getDoc(userRef)).exists()) {
+        await setDoc(userRef, { email, username: name || email.split('@')[0], isAdmin: false, createdAt: serverTimestamp() });
+      }
+      if (!(await getDoc(walletRef)).exists()) {
+        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
+      }
+      const walletSnap = await getDoc(walletRef);
+      return walletSnap.data().balance;
+    }
+
+    function updateNavbar() {
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">Balance: R${userBalance.toFixed(2)}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      };
+    }
+
+    async function updateWallet(amount) {
+      const ref = doc(db, 'wallets', userUid);
+      userBalance += amount;
+      await updateDoc(ref, { balance: userBalance, lastUpdated: serverTimestamp() });
+      updateNavbar();
+    }
+
+    async function recordTransaction(type, amount) {
+      await addDoc(collection(db, 'transactions'), {
+        uid: userUid,
+        type,
+        amount,
+        timestamp: serverTimestamp()
+      });
+    }
+
+    async function placeBet(fixtureId, match, betOn, odds, stake) {
+      const payout = stake * odds;
+      await addDoc(collection(db, 'bets'), {
+        uid: userUid,
+        game: 'soccer',
+        fixtureId,
+        match,
+        betOn,
+        stake,
+        odds,
+        potentialPayout: payout,
+        timestamp: serverTimestamp()
+      });
+      await recordTransaction('soccer-bet', -stake);
+      await updateWallet(-stake);
+      alert(`✅ Bet placed on ${betOn}! Potential Win: R${payout.toFixed(2)}`);
+    }
+
+    async function loadFixtures() {
+      fixturesList.innerHTML = '<div class="spinner"></div><p class="text-gray-400 mt-4">Loading fixtures…</p>';
+      const q = query(collection(db, 'fixtures'), where('sport', '==', 'soccer'), orderBy('date', 'asc'));
+      const snap = await getDocs(q);
+
+      fixturesList.innerHTML = '';
+      if (snap.empty) {
+        fixturesList.innerHTML = '<p class="text-gray-400 text-center">No upcoming fixtures.</p>';
+        return;
+      }
+
+      snap.forEach(docSnap => {
+        const { home, away, league, date, odds } = docSnap.data();
+        const matchDate = new Date(date.seconds * 1000).toLocaleString();
+        const card = document.createElement('div');
+        card.className = 'bg-gray-800 p-6 rounded-xl space-y-2 shadow-md';
+
+        const matchTitle = `${home} vs ${away}`;
+        card.innerHTML = `
+          <h2 class="text-2xl font-semibold">${matchTitle}</h2>
+          <p class="text-gray-400">${league} — ${matchDate}</p>
+          <div class="flex space-x-2 justify-center">
+            <button class="bet-btn bg-green-500 hover:bg-green-600 px-4 py-2 rounded" data-bet="Home" data-odds="${odds.home}">Home (${odds.home})</button>
+            <button class="bet-btn bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded" data-bet="Draw" data-odds="${odds.draw}">Draw (${odds.draw})</button>
+            <button class="bet-btn bg-red-500 hover:bg-red-600 px-4 py-2 rounded" data-bet="Away" data-odds="${odds.away}">Away (${odds.away})</button>
+          </div>
+        `;
+
+        const btns = card.querySelectorAll('.bet-btn');
+        btns.forEach(btn => {
+          btn.onclick = () => {
+            const betOn = btn.dataset.bet;
+            const oddsValue = parseFloat(btn.dataset.odds);
+            const stake = parseFloat(prompt(`Enter bet amount for ${betOn}:`, "10"));
+            if (isNaN(stake) || stake <= 0) return alert('❌ Invalid amount.');
+            if (userBalance < stake) return alert('❌ Not enough balance.');
+            placeBet(docSnap.id, matchTitle, betOn, oddsValue, stake);
+          };
+        });
+
+        fixturesList.appendChild(card);
+      });
+    }
+
+    onAuthStateChanged(auth, async user => {
+      await loadLatestAlert();
+      if (user && (user.emailVerified || user.providerData[0].providerId === 'google.com')) {
+        userUid = user.uid;
+        userBalance = await seedUserAndWallet(user.uid, user.email, user.displayName);
+        greeting.textContent = `Welcome, ${user.displayName || 'Player'} — R${userBalance.toFixed(2)}`;
+        updateNavbar();
+        await loadFixtures();
+      } else {
+        navUserMenu.innerHTML = `<li><a href="auth.html" class="hover:text-green-400">Login</a></li>`;
+      }
+    });
+  </script>
+</body>
+</html>
