@@ -1,4 +1,3 @@
-<!-- Full updated cricket.html below -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,9 +18,9 @@
 
   <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
     <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
-    <h1 class="text-4xl font-extrabold mb-6">Cricket Betting</h1>
-    <p class="text-gray-300 mb-8">Bet Paks on upcoming matches. Choose your team and wager.</p>
-    <div id="matchesList" class="space-y-6"></div>
+    <h1 class="text-4xl font-extrabold mb-6 text-center">🏏 Cricket Fixtures</h1>
+    <p class="text-gray-300 mb-8 text-center">Bet Paks on upcoming matches. Choose your team and wager.</p>
+    <div id="matchesList" class="space-y-6 text-white text-sm"></div>
   </main>
 
   <footer class="bg-gray-800 text-center py-6">
@@ -49,12 +48,12 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    let userUid, userBalance;
-
-    const greeting = document.getElementById('greeting');
     const navUserMenu = document.getElementById('navUserMenu');
     const alertBanner = document.getElementById('alertBanner');
+    const greeting = document.getElementById('greeting');
     const matchesList = document.getElementById('matchesList');
+
+    let userUid, userBalance;
 
     async function loadLatestAlert() {
       const snap = await getDocs(query(collection(db, 'alerts'), orderBy('timestamp', 'desc'), limit(1)));
@@ -68,19 +67,30 @@
       const userRef = doc(db, 'users', uid);
       const walletRef = doc(db, 'wallets', uid);
       if (!(await getDoc(userRef)).exists()) {
-        await setDoc(userRef, { email, username: name || email.split('@')[0], isAdmin: false, createdAt: serverTimestamp() });
+        await setDoc(userRef, {
+          email,
+          username: name || email.split('@')[0],
+          isAdmin: false,
+          createdAt: serverTimestamp()
+        });
       }
       if (!(await getDoc(walletRef)).exists()) {
-        await setDoc(walletRef, { balance: 0.00, lastUpdated: serverTimestamp() });
+        await setDoc(walletRef, {
+          balance: 0.00,
+          lastUpdated: serverTimestamp()
+        });
       }
-      const wSnap = await getDoc(walletRef);
-      return wSnap.data().balance;
+      const snap = await getDoc(walletRef);
+      return snap.data().balance;
     }
 
     async function updateWallet(amount) {
-      const wRef = doc(db, 'wallets', userUid);
+      const ref = doc(db, 'wallets', userUid);
       userBalance += amount;
-      await updateDoc(wRef, { balance: userBalance, lastUpdated: serverTimestamp() });
+      await updateDoc(ref, {
+        balance: userBalance,
+        lastUpdated: serverTimestamp()
+      });
       updateNavbar();
     }
 
@@ -115,12 +125,12 @@
     }
 
     async function loadMatches() {
-      matchesList.innerHTML = '<p class="text-gray-500">Loading matches…</p>';
+      matchesList.innerHTML = '<p class="text-center text-gray-500">Loading cricket fixtures...</p>';
       const snap = await getDocs(query(collection(db, 'fixtures'), where('sport', '==', 'cricket'), orderBy('date', 'asc')));
       matchesList.innerHTML = '';
 
       if (snap.empty) {
-        matchesList.innerHTML = '<p class="text-gray-500">No upcoming matches.</p>';
+        matchesList.innerHTML = '<p class="text-center text-gray-500">No upcoming matches found.</p>';
         return;
       }
 
@@ -128,20 +138,20 @@
         const data = docSnap.data();
         const date = new Date(data.date.seconds * 1000).toLocaleString();
         const card = document.createElement('div');
-        card.className = 'bg-gray-800 p-6 rounded-xl shadow';
+        card.className = 'bg-gray-800 p-6 rounded-xl shadow space-y-2';
 
         card.innerHTML = `
-          <h2 class="text-2xl font-semibold mb-2">${data.home} vs ${data.away}</h2>
-          <p class="text-gray-400 mb-2">${data.league || data.format || 'Cricket'} — ${date}</p>
-          <div class="flex items-center space-x-4 mb-2">
-            <input type="number" placeholder="Bet Amount" class="betAmount w-32 p-2 rounded bg-gray-700 text-white" />
+          <h2 class="text-xl font-semibold">${data.home} vs ${data.away}</h2>
+          <p class="text-gray-400">${data.league || data.format || 'Cricket'} — ${date}</p>
+          <div class="flex items-center space-x-4">
+            <input type="number" placeholder="Bet Amount" class="betAmount w-24 p-2 rounded bg-gray-700 text-white" />
             <select class="selectedTeam bg-gray-700 text-white p-2 rounded">
               <option value="${data.home}">${data.home}</option>
               <option value="${data.away}">${data.away}</option>
             </select>
             <button class="placeBet bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Place Bet</button>
           </div>
-          <div class="betResult text-sm text-yellow-400"></div>
+          <div class="betResult text-yellow-400 text-sm"></div>
         `;
 
         const betBtn = card.querySelector('.placeBet');
@@ -151,7 +161,7 @@
           const resultEl = card.querySelector('.betResult');
 
           if (!amount || amount <= 0) return resultEl.textContent = '❌ Enter a valid bet amount.';
-          if (amount > userBalance) return resultEl.textContent = '❌ Not enough Paks.';
+          if (amount > userBalance) return resultEl.textContent = '❌ Insufficient Paks.';
 
           await updateWallet(-amount);
           await recordTransaction('cricket-bet', -amount);
