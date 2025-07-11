@@ -148,6 +148,7 @@
 
     let adminUid = '', allFixtures = [], editId = null;
     let modalResolve;
+    let fixtureMap = {}; // store fixtures by id
 
     function updateNavbar(user) {
       navUserMenu.innerHTML = `
@@ -234,6 +235,8 @@
       fixturesList.innerHTML = '';
       const search = searchBox.value.toLowerCase();
       const typeF = filterType.value;
+      fixtureMap = {}; // clear old references
+
       const filtered = allFixtures
         .filter(f => (!typeF || f.type === typeF) &&
           `${f.home} ${f.away} ${f.league}`.toLowerCase().includes(search))
@@ -245,6 +248,9 @@
       }
 
       filtered.forEach(f => {
+        const fixtureId = f.id;
+        fixtureMap[fixtureId] = f; // store the object safely
+
         const div = document.createElement('div');
         div.className = 'bg-gray-700 p-4 rounded fade-in';
         div.innerHTML = `
@@ -253,12 +259,28 @@
           <p>Odds: Home ${f.odds.home} | Draw ${f.odds.draw} | Away ${f.odds.away}</p>
           <p>Result: <strong>${f.result || 'N/A'}</strong></p>
           <div class="mt-2 space-x-2">
-            <button onclick="(function(){ editId='${f.id}'; fillForm(${JSON.stringify(f)})})();" class="bg-blue-500 px-3 py-1 rounded">Edit</button>
-            <button onclick="if(confirm('Delete?')){ deleteDoc(doc(db,'fixtures','${f.id}')); loadFixtures(); }" class="bg-red-500 px-3 py-1 rounded">Delete</button>
+            <button onclick="editFixture('${fixtureId}')" class="bg-blue-500 px-3 py-1 rounded">Edit</button>
+            <button onclick="deleteFixture('${fixtureId}')" class="bg-red-500 px-3 py-1 rounded">Delete</button>
           </div>`;
         fixturesList.appendChild(div);
       });
     }
+
+    // Moved edit and delete logic out of inline JS
+    window.editFixture = function(id) {
+      editId = id;
+      fillForm(fixtureMap[id]);
+      cancelBtn.classList.remove('hidden');
+      formTitle.textContent = 'Edit Fixture';
+      submitBtn.textContent = 'Save Changes';
+    };
+
+    window.deleteFixture = async function(id) {
+      if (await showConfirm("Are you sure you want to delete this fixture?")) {
+        await deleteDoc(doc(db, 'fixtures', id));
+        loadFixtures();
+      }
+    };
 
     onAuthStateChanged(auth, async user => {
       if (!user) return window.location.href='auth.html';
