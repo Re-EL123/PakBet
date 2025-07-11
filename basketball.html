@@ -52,8 +52,7 @@
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import {
       getFirestore, doc, getDoc, setDoc, updateDoc,
-      collection, addDoc, query, where, orderBy,
-      getDocs, serverTimestamp, limit
+      collection, addDoc, getDocs, serverTimestamp, query, orderBy, limit
     } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const app = initializeApp({
@@ -104,6 +103,17 @@
       return snap.data().balance;
     }
 
+    function updateNavbar() {
+      navUserMenu.innerHTML = `
+        <li><span class="font-semibold">Balance: R${userBalance.toFixed(2)}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').onclick = async () => {
+        await signOut(auth);
+        window.location.href = 'auth.html';
+      };
+    }
+
     async function updateWallet(amount) {
       const ref = doc(db, 'wallets', userUid);
       userBalance += amount;
@@ -141,52 +151,50 @@
       alert(`✅ Bet placed on ${betOn}! Potential Win: R${payout.toFixed(2)}`);
     }
 
-    function updateNavbar() {
-      navUserMenu.innerHTML = `
-        <li><span class="font-semibold">Balance: R${userBalance.toFixed(2)}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>
-      `;
-      document.getElementById('logoutBtn').onclick = async () => {
-        await signOut(auth);
-        window.location.href = 'auth.html';
-      };
-    }
-
     async function loadMatches() {
       matchesList.innerHTML = '<div class="spinner"></div><p class="text-gray-400 mt-4">Loading fixtures…</p>';
-      const snap = await getDocs(query(collection(db, 'fixtures'), where('type', '==', 'basketball'), orderBy('date', 'asc')));
+      const snap = await getDocs(collection(db, 'fixtures'));
       matchesList.innerHTML = '';
 
-      if (snap.empty) {
+      const fixtures = [];
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.type === 'basketball') {
+          fixtures.push({ id: docSnap.id, ...data });
+        }
+      });
+
+      fixtures.sort((a, b) => (a.date?.seconds || 0) - (b.date?.seconds || 0));
+
+      if (fixtures.length === 0) {
         matchesList.innerHTML = '<p class="text-center text-gray-500">No upcoming fixtures.</p>';
         return;
       }
 
-      snap.forEach(docSnap => {
-        const { home, away, league, date, odds } = docSnap.data();
-        const matchDate = new Date(date.seconds * 1000).toLocaleString();
-        const matchTitle = `${home} vs ${away}`;
+      fixtures.forEach(f => {
+        const matchDate = new Date(f.date.seconds * 1000).toLocaleString();
+        const matchTitle = `${f.home} vs ${f.away}`;
         const card = document.createElement('div');
         card.className = 'bg-gray-800 p-6 rounded-xl space-y-2 shadow-md';
 
         card.innerHTML = `
           <h2 class="text-2xl font-semibold">${matchTitle}</h2>
-          <p class="text-gray-400">${league || 'Basketball League'} — ${matchDate}</p>
+          <p class="text-gray-400">${f.league || 'Basketball League'} — ${matchDate}</p>
           <div class="flex space-x-2 justify-center">
-            <button class="bet-btn bg-green-500 hover:bg-green-600 px-4 py-2 rounded" data-bet="${home}" data-odds="${odds?.home}">Home (${odds?.home})</button>
-            <button class="bet-btn bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded" data-bet="Draw" data-odds="${odds?.draw}">Draw (${odds?.draw})</button>
-            <button class="bet-btn bg-red-500 hover:bg-red-600 px-4 py-2 rounded" data-bet="${away}" data-odds="${odds?.away}">Away (${odds?.away})</button>
+            <button class="bet-btn bg-green-500 hover:bg-green-600 px-4 py-2 rounded" data-bet="${f.home}" data-odds="${f.odds?.home}">Home (${f.odds?.home})</button>
+            <button class="bet-btn bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded" data-bet="Draw" data-odds="${f.odds?.draw}">Draw (${f.odds?.draw})</button>
+            <button class="bet-btn bg-red-500 hover:bg-red-600 px-4 py-2 rounded" data-bet="${f.away}" data-odds="${f.odds?.away}">Away (${f.odds?.away})</button>
           </div>
         `;
 
         card.querySelectorAll('.bet-btn').forEach(btn => {
           btn.onclick = () => {
             const betOn = btn.dataset.bet;
-            const oddsVal = parseFloat(btn.dataset.odds);
+            const odds = parseFloat(btn.dataset.odds);
             const stake = parseFloat(prompt(`Enter stake for ${betOn}:`, "10"));
             if (isNaN(stake) || stake <= 0) return alert('❌ Invalid amount.');
             if (stake > userBalance) return alert('❌ Insufficient balance.');
-            placeBet(docSnap.id, matchTitle, betOn, oddsVal, stake);
+            placeBet(f.id, matchTitle, betOn, odds, stake);
           };
         });
 
