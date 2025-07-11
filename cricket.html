@@ -8,6 +8,7 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
+  <!-- Navbar -->
   <nav class="bg-gray-800 shadow-md">
     <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
@@ -16,24 +17,28 @@
     <div id="alertBanner" class="hidden bg-yellow-500 text-gray-900 text-center py-2"></div>
   </nav>
 
+  <!-- Main -->
   <main class="flex-grow max-w-6xl mx-auto px-4 py-12">
     <div id="greeting" class="text-center mb-6 text-xl text-gray-300"></div>
     <h1 class="text-4xl font-extrabold mb-6 text-center">🏏 Cricket Fixtures</h1>
     <p class="text-gray-300 mb-8 text-center">Bet Paks on upcoming matches. Choose your team and wager.</p>
-    <div id="matchesList" class="space-y-6 text-white text-sm"></div>
+    <div id="matchesList" class="space-y-6 text-white text-sm text-center">
+      <p class="text-gray-500">Loading cricket fixtures...</p>
+    </div>
   </main>
 
+  <!-- Footer -->
   <footer class="bg-gray-800 text-center py-6">
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
+  <!-- Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
     import {
       getFirestore, doc, getDoc, setDoc, updateDoc,
-      collection, addDoc, query, where, orderBy, limit,
-      getDocs, serverTimestamp
+      collection, addDoc, getDocs, serverTimestamp, query, orderBy, limit
     } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const app = initializeApp({
@@ -125,17 +130,26 @@
     }
 
     async function loadMatches() {
-      matchesList.innerHTML = '<p class="text-center text-gray-500">Loading cricket fixtures...</p>';
-      const snap = await getDocs(query(collection(db, 'fixtures'), where('type', '==', 'cricket'), orderBy('date', 'asc')));
+      matchesList.innerHTML = '<p class="text-gray-500">Loading cricket fixtures...</p>';
+      const snap = await getDocs(collection(db, 'fixtures'));
       matchesList.innerHTML = '';
 
-      if (snap.empty) {
-        matchesList.innerHTML = '<p class="text-center text-gray-500">No upcoming matches found.</p>';
+      const fixtures = [];
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.type === 'cricket') {
+          fixtures.push({ id: docSnap.id, ...data });
+        }
+      });
+
+      fixtures.sort((a, b) => (a.date?.seconds || 0) - (b.date?.seconds || 0));
+
+      if (fixtures.length === 0) {
+        matchesList.innerHTML = '<p class="text-gray-500">No upcoming matches found.</p>';
         return;
       }
 
-      snap.forEach(docSnap => {
-        const data = docSnap.data();
+      fixtures.forEach(data => {
         const date = new Date(data.date.seconds * 1000).toLocaleString();
         const card = document.createElement('div');
         card.className = 'bg-gray-800 p-6 rounded-xl shadow space-y-2';
@@ -143,15 +157,15 @@
         card.innerHTML = `
           <h2 class="text-xl font-semibold">${data.home} vs ${data.away}</h2>
           <p class="text-gray-400">${data.league || data.format || 'Cricket'} — ${date}</p>
-          <div class="flex items-center space-x-4">
-            <input type="number" placeholder="Bet Amount" class="betAmount w-24 p-2 rounded bg-gray-700 text-white" />
+          <div class="flex items-center justify-center space-x-4">
+            <input type="number" placeholder="Bet Amount" class="betAmount w-24 p-2 rounded bg-gray-700 text-white text-center" />
             <select class="selectedTeam bg-gray-700 text-white p-2 rounded">
               <option value="${data.home}">${data.home}</option>
               <option value="${data.away}">${data.away}</option>
             </select>
             <button class="placeBet bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Place Bet</button>
           </div>
-          <div class="betResult text-yellow-400 text-sm"></div>
+          <div class="betResult text-yellow-400 text-sm mt-2"></div>
         `;
 
         const betBtn = card.querySelector('.placeBet');
@@ -165,7 +179,7 @@
 
           await updateWallet(-amount);
           await recordTransaction('cricket-bet', -amount);
-          await recordBet(docSnap.id, team, amount);
+          await recordBet(data.id, team, amount);
 
           resultEl.textContent = `✅ Bet placed on ${team} for ${amount.toFixed(2)} P`;
         };
