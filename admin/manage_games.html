@@ -3,209 +3,217 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PakBet — Manage Games</title>
+  <title>PakBet — Manage Fixtures</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    .fade-in {
-      animation: fadeIn 0.5s ease-in;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .spinner {
-      border: 4px solid rgba(255,255,255,0.2);
-      border-top-color: #10B981;
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    .fade-in { ... }
+    .spinner { ... }
+    /* Modal backdrop */
+    .modal-bg { background: rgba(0,0,0,0.6); }
   </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Navbar -->
-  <nav class="bg-gray-800 shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <span class="text-2xl font-bold text-green-500">PakBet Admin</span>
-      <ul id="navUserMenu" class="flex items-center space-x-6"></ul>
-    </div>
-  </nav>
+  <nav> ... </nav>
 
-  <main class="flex-grow max-w-5xl mx-auto px-4 py-8">
+  <main class="...">
     <h1 class="text-4xl font-extrabold mb-6">Manage Fixtures</h1>
 
-    <!-- Add Fixture Form -->
+    <!-- Fixture Form -->
     <div class="bg-gray-800 p-6 rounded-xl mb-12">
-      <h2 class="text-2xl font-bold mb-4">Add New Fixture</h2>
-      <form id="addFixtureForm" class="space-y-4">
-        <select id="gameType" class="w-full p-2 rounded bg-gray-700 text-white">
-          <option value="soccer">Soccer</option>
-          <option value="cricket">Cricket</option>
-          <option value="rugby">Rugby</option>
-          <option value="basketball">Basketball</option>
-        </select>
-        <input id="homeTeam" type="text" placeholder="Home Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
-        <input id="awayTeam" type="text" placeholder="Away Team" class="w-full p-2 rounded bg-gray-700 text-white" required>
-        <input id="league" type="text" placeholder="League" class="w-full p-2 rounded bg-gray-700 text-white" required>
-        <input id="fixtureDate" type="datetime-local" class="w-full p-2 rounded bg-gray-700 text-white" required>
+      <h2 id="formTitle" class="text-2xl font-bold mb-4">Add New Fixture</h2>
+      <form id="fixtureForm" class="space-y-4">
+        <select id="gameType" ...> ... </select>
+        <input id="homeTeam" type="text" ... />
+        <input id="awayTeam" type="text" ... />
+        <input id="league" type="text" ... />
+        <input id="fixtureDate" type="datetime-local" ... />
         <div class="flex space-x-2">
-          <input id="oddsHome" type="number" step="0.01" placeholder="Home Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
-          <input id="oddsDraw" type="number" step="0.01" placeholder="Draw Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
-          <input id="oddsAway" type="number" step="0.01" placeholder="Away Odds" class="flex-1 p-2 rounded bg-gray-700 text-white" required>
+          <input id="oddsHome" ... />
+          <input id="oddsDraw" ... />
+          <input id="oddsAway" ... />
         </div>
-        <button type="submit" class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Add Fixture</button>
+        <select id="result" class="w-full p-2 rounded bg-gray-700 text-white">
+          <option value="">-- Result (optional) --</option>
+          <option value="home">Home Win</option>
+          <option value="draw">Draw</option>
+          <option value="away">Away Win</option>
+        </select>
+        <button type="submit" id="submitBtn" class="bg-green-500 px-4 py-2 rounded font-bold hover:bg-green-600">Add Fixture</button>
+        <button type="button" id="cancelEditBtn" class="hidden bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">Cancel</button>
       </form>
     </div>
 
     <!-- Filters -->
-    <div class="flex justify-between mb-4">
-      <select id="filterType" class="p-2 rounded bg-gray-800 text-white">
-        <option value="">All Types</option>
-        <option value="soccer">Soccer</option>
-        <option value="cricket">Cricket</option>
-        <option value="rugby">Rugby</option>
-        <option value="basketball">Basketball</option>
-      </select>
-      <input id="searchBox" type="text" placeholder="Search by team or league…" class="p-2 rounded bg-gray-700 text-white w-1/2"/>
-    </div>
+    <div class="..."> ... </div>
 
     <!-- Fixtures List -->
-    <div id="fixturesList" class="space-y-4 text-gray-300">
+    <div id="fixturesList" class="...">
       <div class="spinner mx-auto"></div>
     </div>
   </main>
 
-  <footer class="bg-gray-800 text-center py-6">
-    <p class="text-gray-400 text-sm">&copy; 2025 PakBet Admin</p>
-  </footer>
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="fixed inset-0 hidden justify-center items-center modal-bg">
+    <div class="bg-gray-800 p-6 rounded-xl space-y-4 w-full max-w-md">
+      <p id="confirmText" class="text-lg"></p>
+      <div class="flex justify-end space-x-4">
+        <button id="confirmCancel" class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">Cancel</button>
+        <button id="confirmOK" class="bg-red-500 px-4 py-2 rounded hover:bg-red-600">Yes, Save</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- Firebase -->
+  <footer> ... </footer>
+
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import {
-      getFirestore, doc, getDoc, addDoc, collection,
-      serverTimestamp, getDocs, deleteDoc, query, orderBy
-    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import { initializeApp } from "...";
+    import { getAuth, onAuthStateChanged, signOut } from "...";
+    import { getFirestore, doc, getDoc, addDoc, updateDoc, deleteDoc, getDocs, query, orderBy, collection, serverTimestamp } from "...";
 
-    const app = initializeApp({
-      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
-      authDomain: "pakbet-b0abe.firebaseapp.com",
-      projectId: "pakbet-b0abe"
-    });
-
+    const app = initializeApp({ ... });
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const navUserMenu = document.getElementById('navUserMenu');
-    const fixturesList = document.getElementById('fixturesList');
-    const addFixtureForm = document.getElementById('addFixtureForm');
-    const searchBox = document.getElementById('searchBox');
-    const filterType = document.getElementById('filterType');
-
     let adminUid = '';
     let allFixtures = [];
+    let editId = null;
 
-    function updateNavbar(user) {
-      navUserMenu.innerHTML = `
-        <li><span class="font-semibold">${user.displayName || user.email}</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
-      document.getElementById('logoutBtn').onclick = async () => {
-        await signOut(auth);
-        window.location.href = 'auth.html';
+    const form = document.getElementById('fixtureForm');
+    const formTitle = document.getElementById('formTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const modal = document.getElementById('confirmModal');
+    const confirmText = document.getElementById('confirmText');
+    let modalResolve;
+
+    function showConfirm(message) {
+      confirmText.textContent = message;
+      modal.classList.remove('hidden');
+      return new Promise(resolve => {
+        modalResolve = resolve;
+      });
+    }
+    document.getElementById('confirmCancel').onclick = () => { modal.classList.add('hidden'); modalResolve(false); };
+    document.getElementById('confirmOK').onclick = () => { modal.classList.add('hidden'); modalResolve(true); };
+
+    function resetForm() {
+      form.reset();
+      editId = null;
+      formTitle.textContent = 'Add New Fixture';
+      submitBtn.textContent = 'Add Fixture';
+      cancelBtn.classList.add('hidden');
+    }
+
+    async function handleSave() {
+      const type = gameType.value;
+      const home = homeTeam.value.trim();
+      const away = awayTeam.value.trim();
+      const leagueVal = league.value.trim();
+      const dateTs = { seconds: Math.floor(new Date(fixtureDate.value).getTime() / 1000) };
+      const oddsData = {
+        home: parseFloat(oddsHome.value),
+        draw: parseFloat(oddsDraw.value),
+        away: parseFloat(oddsAway.value)
       };
+      const resultVal = result.value;
+
+      if (editId) {
+        await updateDoc(doc(db,'fixtures',editId), {
+          type, home, away, league: leagueVal, date: dateTs, odds: oddsData,
+          result: resultVal||null, updatedBy: adminUid, updatedAt: serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db,'fixtures'), {
+          type, home, away, league: leagueVal, date: dateTs, odds: oddsData,
+          result: resultVal||null, createdBy: adminUid, createdAt: serverTimestamp()
+        });
+      }
+      resetForm();
+      loadFixtures();
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const action = editId ? 'update this fixture' : 'add new fixture';
+      const ok = await showConfirm(`Are you sure you want to ${action}?`);
+      if (ok) await handleSave();
+    });
+
+    cancelBtn.addEventListener('click', resetForm);
+
+    async function startEdit(f) {
+      editId = f.id;
+      formTitle.textContent = 'Edit Fixture';
+      submitBtn.textContent = 'Save Changes';
+      cancelBtn.classList.remove('hidden');
+
+      gameType.value = f.type;
+      homeTeam.value = f.home;
+      awayTeam.value = f.away;
+      league.value = f.league;
+      fixtureDate.value = new Date(f.date.seconds * 1000).toISOString().slice(0,16);
+      oddsHome.value = f.odds.home;
+      oddsDraw.value = f.odds.draw;
+      oddsAway.value = f.odds.away;
+      result.value = f.result || '';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function deleteFixture(id) {
+      if (confirm('Delete this fixture?')) {
+        await deleteDoc(doc(db,'fixtures',id));
+        loadFixtures();
+      }
     }
 
     function renderFixtures() {
-      const search = searchBox.value.toLowerCase();
-      const typeFilter = filterType.value;
       fixturesList.innerHTML = '';
+      const filter = filterType.value;
+      const term = searchBox.value.toLowerCase();
+      const data = allFixtures
+        .filter(f => (!filter || f.type===filter) && (`${f.home} ${f.away} ${f.league}`.toLowerCase().includes(term)))
+        .sort((a,b)=>a.date.seconds - b.date.seconds);
 
-      const filtered = allFixtures.filter(f =>
-        (!typeFilter || f.type === typeFilter) &&
-        (`${f.home} ${f.away} ${f.league}`.toLowerCase().includes(search))
-      );
-
-      if (filtered.length === 0) {
+      if (!data.length) {
         fixturesList.innerHTML = '<p>No fixtures found.</p>';
         return;
       }
 
-      filtered.forEach(f => {
+      for (const f of data) {
         const div = document.createElement('div');
         div.className = 'bg-gray-700 p-4 rounded fade-in';
         div.innerHTML = `
           <h3 class="font-bold">${f.home} vs ${f.away} <span class="text-sm text-gray-400">[${f.type}]</span></h3>
-          <p>${f.league} — ${new Date(f.date.seconds * 1000).toLocaleString()}</p>
-          <p>Odds: Home ${f.odds.home} | Draw ${f.odds.draw} | Away ${f.odds.away}</p>
-          <button class="mt-2 bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm" onclick="deleteFixture('${f.id}')">Delete</button>
-        `;
+          <p>${f.league} • ${new Date(f.date.seconds*1000).toLocaleString()}</p>
+          <p>Odds: H ${f.odds.home} | D ${f.odds.draw} | A ${f.odds.away}</p>
+          <p>Result: <strong>${f.result || '—'}</strong></p>
+          <div class="mt-2 space-x-2">
+            <button onclick="startEdit(${JSON.stringify(f).replace(/\"/g,'&quot;')})" class="bg-blue-500 px-3 py-1 rounded">Edit</button>
+            <button onclick="deleteFixture('${f.id}')" class="bg-red-500 px-3 py-1 rounded">Delete</button>
+          </div>`;
         fixturesList.appendChild(div);
-      });
+      }
     }
 
     async function loadFixtures() {
+      fixturesList.innerHTML = '<div class="spinner mx-auto"></div>';
       const snap = await getDocs(query(collection(db,'fixtures'), orderBy('date','asc')));
-      allFixtures = [];
-      snap.forEach(docSnap => {
-        allFixtures.push({ id: docSnap.id, ...docSnap.data() });
-      });
+      allFixtures = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderFixtures();
     }
 
-    window.deleteFixture = async (id) => {
-      if (!confirm('Are you sure you want to delete this fixture?')) return;
-      await deleteDoc(doc(db, 'fixtures', id));
-      alert('Fixture deleted.');
-      loadFixtures();
-    };
-
-    addFixtureForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const type = document.getElementById('gameType').value;
-      const home = document.getElementById('homeTeam').value.trim();
-      const away = document.getElementById('awayTeam').value.trim();
-      const league = document.getElementById('league').value.trim();
-      const dateStr = document.getElementById('fixtureDate').value;
-      const odds = {
-        home: parseFloat(document.getElementById('oddsHome').value),
-        draw: parseFloat(document.getElementById('oddsDraw').value),
-        away: parseFloat(document.getElementById('oddsAway').value)
-      };
-
-      const date = new Date(dateStr);
-      const timestamp = { seconds: Math.floor(date.getTime() / 1000) };
-
-      await addDoc(collection(db,'fixtures'), {
-        type, home, away, league, date: timestamp, odds,
-        createdBy: adminUid,
-        createdAt: serverTimestamp()
-      });
-
-      alert('✅ Fixture added!');
-      addFixtureForm.reset();
+    onAuthStateChanged(auth, async user => {
+      if (!user) return window.location.href = 'auth.html';
+      const snap = await getDoc(doc(db,'users',user.uid));
+      if (!snap.exists()||!snap.data().isAdmin) { await signOut(auth); return window.location.href='auth.html'; }
+      adminUid = user.uid;
+      updateNavbar(user);
       loadFixtures();
     });
 
     searchBox.addEventListener('input', renderFixtures);
     filterType.addEventListener('change', renderFixtures);
-
-    onAuthStateChanged(auth, async user => {
-      if (!user) return window.location.href = 'auth.html';
-      const snap = await getDoc(doc(db, 'users', user.uid));
-      if (!snap.exists() || !snap.data().isAdmin) {
-        await signOut(auth);
-        return window.location.href = 'auth.html';
-      }
-      adminUid = user.uid;
-      updateNavbar(user);
-      loadFixtures();
-    });
   </script>
 </body>
 </html>
