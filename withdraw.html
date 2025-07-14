@@ -147,7 +147,7 @@
 
       try {
         const requestRef = 'PAK-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-        await addDoc(collection(db, 'pending_withdrawals'), {
+        await addDoc(collection(db, 'withdrawals'), {
           uid: currentUser.uid,
           amount: amt,
           accountHolder: acc,
