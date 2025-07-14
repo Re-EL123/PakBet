@@ -231,7 +231,7 @@
 
       try {
         const ref = genRef();
-        await addDoc(collection(db, 'pending_withdrawals'), {
+        await addDoc(collection(db, 'withdrawals'), {
           uid: auth.currentUser.uid,
           amount: amt,
           accountHolder: acc,
