@@ -33,7 +33,6 @@
           <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white">
             <option value="shop2shop">Shop2Shop</option>
             <option value="voucher">1-Voucher (16 digits)</option>
-            <option value="flashvoucher">Flash Voucher (16 digits)</option>
             <option value="easyload">EasyLoad Voucher (14 digits)</option>
             <option value="manual">Manual Deposit</option>
           </select>
@@ -195,7 +194,7 @@
           });
           statusMsg.className = 'text-center text-sm text-green-400';
           statusMsg.textContent = `✅ Scan & pay. Ref: ${ref}. Await admin approval.`;
-        } else if (['voucher', 'flashvoucher', 'easyload'].includes(mtd)) {
+        } else if (['voucher', 'easyload'].includes(mtd)) {
           window.location.href = `voucher_deposit.html?type=${mtd}&ref=${ref}`;
         } else if (mtd === 'manual') {
           window.location.href = `deposit.html?ref=${ref}`;
