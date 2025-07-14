@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PakBet — Wallet</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    button:active {
+      transform: scale(0.95);
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
@@ -29,14 +34,14 @@
       <!-- Deposit Section -->
       <div>
         <h2 class="text-lg font-semibold mb-2">Deposit (Buy Paks)</h2>
-        <div class="flex items-center space-x-4">
-          <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+          <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white w-full sm:w-auto">
             <option value="shop2shop">Shop2Shop</option>
             <option value="voucher">1-Voucher (16 digits)</option>
             <option value="easyload">EasyLoad Voucher (14 digits)</option>
             <option value="manual">Manual Deposit</option>
           </select>
-          <button id="depositBtn" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+          <button id="depositBtn" class="transition-transform transform hover:scale-105 bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold disabled:opacity-50 w-full sm:w-auto">
             Deposit
           </button>
         </div>
@@ -52,7 +57,7 @@
           <input id="wl-branch-code" type="text" placeholder="Branch Code" class="p-2 rounded bg-gray-700 text-white"/>
           <input id="wl-account-number" type="text" placeholder="Account Number" class="p-2 rounded bg-gray-700 text-white"/>
           <input id="wl-reference" type="text" placeholder="Payment Reference" class="p-2 rounded bg-gray-700 text-white"/>
-          <button id="withdrawBtn" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded font-bold disabled:opacity-50">
+          <button id="withdrawBtn" class="transition-transform transform hover:scale-105 bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded font-bold disabled:opacity-50">
             Withdraw
           </button>
         </div>
@@ -61,7 +66,7 @@
       <!-- Buy Voucher -->
       <div>
         <h2 class="text-lg font-semibold mb-2">Buy Voucher</h2>
-        <button id="buyVoucherBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded font-bold">
+        <button id="buyVoucherBtn" class="transition-transform transform hover:scale-105 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded font-bold w-full sm:w-auto">
           Buy Voucher
         </button>
       </div>
@@ -163,7 +168,7 @@
 
       navMenu.innerHTML = `
         <li><span class="font-semibold">${user.displayName || user.email} — ${bal.toFixed(2)} P</span></li>
-        <li><button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
+        <li><button id="logoutBtn" class="transition-transform transform hover:scale-105 bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button></li>`;
       document.getElementById('logoutBtn').onclick = async () => {
         await signOut(auth);
         window.location.href = 'auth.html';
