@@ -127,15 +127,15 @@
         window.location.href = 'auth.html';
       };
 
-      greetingEl.textContent = `Hello, ${user.displayName || 'Player'}! Your balance: R${balance.toFixed(2)}. To Top Up Your Pakbet Account Make Deposit To Following Account details
+      greetingEl.textContent = `Hello, ${user.displayName || 'Player'}! Your balance: R${balance.toFixed(2)}. \nTo Top Up Your Pakbet Account Make Deposit To Following Account details
       
-Bank name:	Sasfin Bank
-Branch code:	683000
-Account holder:	Mr Irfan Afzal
-Account number:	78600795127
-Account type:	CURRENT
-
-Manually Corfim Your Deposit Here`;
+\nBank name:	Sasfin Bank
+\nBranch code:	683000
+\nAccount holder:	Mr Irfan Afzal
+\nAccount number:	78600795127
+\nAccount type:	CURRENT
+\n
+\nManually Corfim Your Deposit Here`;
 
       depositBtn.onclick = async () => {
         const amt = parseFloat(document.getElementById('depositAmount').value);
