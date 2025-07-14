@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PakBet — Manage Withdrawals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white">
+
+  <nav class="bg-gray-800 p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-green-400">PakBet Admin – Withdrawals</h1>
+    <ul id="navUserMenu" class="flex space-x-4"></ul>
+  </nav>
+
+  <main class="max-w-6xl mx-auto p-6">
+    <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+      <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400">Pending</p><h2 id="pendingCount" class="text-2xl font-bold">0</h2></div>
+      <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400">Approved</p><h2 id="approvedCount" class="text-2xl font-bold">0</h2></div>
+      <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400">Rejected</p><h2 id="rejectedCount" class="text-2xl font-bold">0</h2></div>
+      <div class="bg-gray-800 p-4 rounded"><p class="text-gray-400">Total R</p><h2 id="totalAmount" class="text-2xl font-bold">0</h2></div>
+    </div>
+
+    <div class="flex justify-between items-center mb-4">
+      <input id="searchBox" type="text" placeholder="Search user ID…" class="p-2 rounded bg-gray-800 text-white w-full sm:w-1/2"/>
+    </div>
+
+    <div id="withdrawalsList" class="space-y-4"></div>
+    <div id="pagination" class="flex justify-center mt-6 space-x-2"></div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, updateDoc,
+      collection, getDocs
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      databaseURL: "https://pakbet-b0abe-default-rtdb.firebaseio.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "499452911724",
+      appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
+      measurementId: "G-QPLND82T33"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const withdrawalsList = document.getElementById('withdrawalsList');
+    const pagination = document.getElementById('pagination');
+    const searchBox = document.getElementById('searchBox');
+    const navUserMenu = document.getElementById('navUserMenu');
+
+    let withdrawals = [], currentPage = 1, perPage = 10;
+
+    function updateNavbar(user) {
+      navUserMenu.innerHTML = `
+        <li><span>${user.displayName || user.email}</span></li>
+        <li><button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded hover:bg-red-600">Logout</button></li>
+      `;
+      document.getElementById('logoutBtn').onclick = () => signOut(auth);
+    }
+
+    function updateSummary() {
+      const pending = withdrawals.filter(w => w.status === 'pending');
+      const approved = withdrawals.filter(w => w.status === 'approved');
+      const rejected = withdrawals.filter(w => w.status === 'rejected');
+
+      document.getElementById('pendingCount').textContent = pending.length;
+      document.getElementById('approvedCount').textContent = approved.length;
+      document.getElementById('rejectedCount').textContent = rejected.length;
+      document.getElementById('totalAmount').textContent =
+        withdrawals.reduce((sum, w) => sum + parseFloat(w.amount), 0).toFixed(2);
+    }
+
+    function paginate(arr) {
+      const start = (currentPage - 1) * perPage;
+      return arr.slice(start, start + perPage);
+    }
+
+    function renderPagination(filtered) {
+      const pages = Math.ceil(filtered.length / perPage);
+      pagination.innerHTML = '';
+      for (let i = 1; i <= pages; i++) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = `px-3 py-1 rounded ${i === currentPage ? 'bg-green-500' : 'bg-gray-700 hover:bg-gray-600'}`;
+        btn.onclick = () => {
+          currentPage = i;
+          renderWithdrawals();
+        };
+        pagination.appendChild(btn);
+      }
+    }
+
+    function renderWithdrawals() {
+      const search = searchBox.value.toLowerCase();
+      const filtered = withdrawals.filter(w => w.uid.toLowerCase().includes(search));
+      const pageItems = paginate(filtered);
+
+      withdrawalsList.innerHTML = '';
+
+      if (filtered.length === 0) {
+        withdrawalsList.innerHTML = '<p class="text-center text-gray-400">No withdrawals found.</p>';
+        return;
+      }
+
+      pageItems.forEach(w => {
+        const div = document.createElement('div');
+        div.className = 'bg-gray-800 p-4 rounded';
+        div.innerHTML = `
+          <p><strong>User:</strong> <a class="text-green-400 underline" href="admin_user_profile.html?uid=${w.uid}" target="_blank">${w.uid}</a></p>
+          <p><strong>Amount:</strong> R${parseFloat(w.amount).toFixed(2)}</p>
+          <p><strong>Status:</strong> ${w.status}</p>
+          <div class="mt-2 space-x-2">
+            ${w.status === 'pending' ? `
+              <button class="approveBtn bg-green-500 px-3 py-1 rounded" data-id="${w.id}" data-uid="${w.uid}" data-amt="${w.amount}">Approve</button>
+              <button class="rejectBtn bg-red-500 px-3 py-1 rounded" data-id="${w.id}">Reject</button>
+            ` : ''}
+          </div>
+        `;
+        withdrawalsList.appendChild(div);
+      });
+
+      renderPagination(filtered);
+    }
+
+    async function loadWithdrawals() {
+      const snap = await getDocs(collection(db, 'withdrawals'));
+      withdrawals = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      updateSummary();
+      renderWithdrawals();
+    }
+
+    async function creditWallet(uid, amount) {
+      const ref = doc(db, 'users', uid);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) return;
+      const current = parseFloat(snap.data().balance || 0);
+      await updateDoc(ref, { balance: current + parseFloat(amount) });
+    }
+
+    document.addEventListener('click', async e => {
+      if (e.target.classList.contains('approveBtn')) {
+        const id = e.target.dataset.id;
+        const uid = e.target.dataset.uid;
+        const amt = e.target.dataset.amt;
+        await updateDoc(doc(db, 'withdrawals', id), { status: 'approved' });
+        await creditWallet(uid, -amt); // subtract from wallet
+        loadWithdrawals();
+      } else if (e.target.classList.contains('rejectBtn')) {
+        const id = e.target.dataset.id;
+        await updateDoc(doc(db, 'withdrawals', id), { status: 'rejected' });
+        loadWithdrawals();
+      }
+    });
+
+    searchBox.addEventListener('input', () => {
+      currentPage = 1;
+      renderWithdrawals();
+    });
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) return location.href = 'auth.html';
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      if (!snap.exists() || !snap.data().isAdmin) return location.href = 'auth.html';
+      updateNavbar(user);
+      await loadWithdrawals();
+    });
+  </script>
+</body>
+</html>
