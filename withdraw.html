@@ -23,7 +23,6 @@
 </head>
 <body class="bg-gray-900 text-white flex flex-col min-h-screen">
 
-  <!-- Header -->
   <header class="bg-gray-800 shadow-md">
     <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
       <span class="text-2xl font-bold text-green-500">PakBet</span>
@@ -34,10 +33,24 @@
     <h1 class="text-3xl font-bold text-center mb-4">Withdraw Funds</h1>
 
     <div class="bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
-      <input id="withdrawAmount" type="number" min="1" placeholder="Enter Amount (Rands)"
+      <p class="text-center text-green-400 text-lg">Balance: <span id="balance">Loading...</span> P</p>
+
+      <input id="withdrawAmount" type="number" min="1" placeholder="Amount (Paks)"
              class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
 
-      <input id="withdrawRef" type="text" placeholder="Payment Method (e.g. Capitec, FNB, etc)"
+      <input id="accHolder" type="text" placeholder="Account Holder Name"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
+
+      <input id="bankName" type="text" placeholder="Bank Name"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
+
+      <input id="branchCode" type="text" placeholder="Branch Code"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
+
+      <input id="accNumber" type="text" placeholder="Account Number"
+             class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
+
+      <input id="refCode" type="text" placeholder="Payment Reference"
              class="p-3 w-full rounded bg-gray-700 text-white text-center text-lg"/>
 
       <button id="submitWithdraw"
@@ -53,11 +66,13 @@
     <p class="text-gray-400 text-sm">&copy; 2025 PakBet</p>
   </footer>
 
-  <!-- Firebase + Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-    import { getFirestore, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+    import {
+      getFirestore, getDoc, doc, addDoc,
+      collection, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
@@ -65,8 +80,7 @@
       projectId: "pakbet-b0abe",
       storageBucket: "pakbet-b0abe.appspot.com",
       messagingSenderId: "499452911724",
-      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849",
-      measurementId: "G-QPLND82T33"
+      appId: "1:499452911724:web:7b0e314d16ce8a6dcb849"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -74,15 +88,29 @@
     const db = getFirestore(app);
 
     const amountEl = document.getElementById('withdrawAmount');
-    const refEl = document.getElementById('withdrawRef');
+    const accHolderEl = document.getElementById('accHolder');
+    const bankNameEl = document.getElementById('bankName');
+    const branchCodeEl = document.getElementById('branchCode');
+    const accNumberEl = document.getElementById('accNumber');
+    const refCodeEl = document.getElementById('refCode');
     const statusMsg = document.getElementById('statusMessage');
     const submitBtn = document.getElementById('submitWithdraw');
+    const balanceSpan = document.getElementById('balance');
 
     let currentUser = null;
+    let userBalance = 0;
 
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
       if (!user) return window.location.href = 'auth.html';
       currentUser = user;
+
+      const walletSnap = await getDoc(doc(db, 'wallets', user.uid));
+      if (walletSnap.exists()) {
+        userBalance = walletSnap.data().balance || 0;
+        balanceSpan.textContent = userBalance.toFixed(2);
+      } else {
+        balanceSpan.textContent = '0.00';
+      }
     });
 
     function showLoading() {
@@ -95,45 +123,54 @@
       submitBtn.innerHTML = `<span>Submit Withdrawal</span>`;
     }
 
-    function showStatus(message, color='text-gray-400') {
+    function showStatus(msg, color='text-gray-400') {
       statusMsg.className = `text-center text-sm mt-2 ${color}`;
-      statusMsg.textContent = message;
+      statusMsg.textContent = msg;
     }
 
     submitBtn.addEventListener('click', async () => {
-      if (!currentUser) {
-        showStatus('Please wait... verifying user session.', 'text-yellow-400');
-        return;
-      }
+      if (!currentUser) return showStatus('Verifying user...', 'text-yellow-400');
 
-      const amount = parseFloat(amountEl.value.trim());
-      const paymentRef = refEl.value.trim();
+      const amt = parseFloat(amountEl.value.trim());
+      const acc = accHolderEl.value.trim();
+      const bank = bankNameEl.value.trim();
+      const branch = branchCodeEl.value.trim();
+      const accNo = accNumberEl.value.trim();
+      const ref = refCodeEl.value.trim();
 
-      if (isNaN(amount) || amount <= 0) {
-        showStatus('❌ Enter a valid withdrawal amount.', 'text-red-400');
-        return;
-      }
-      if (!paymentRef) {
-        showStatus('❌ Please enter a payment method or reference.', 'text-red-400');
-        return;
-      }
+      if (!amt || isNaN(amt) || amt <= 0) return showStatus('❌ Enter a valid amount.', 'text-red-400');
+      if (amt > userBalance) return showStatus('❌ You don’t have enough balance.', 'text-red-400');
+      if (!acc || !bank || !branch || !accNo || !ref) return showStatus('❌ Please fill in all fields.', 'text-red-400');
 
       showLoading();
       showStatus('');
 
       try {
+        const requestRef = 'PAK-' + Math.random().toString(36).substring(2, 10).toUpperCase();
         await addDoc(collection(db, 'pending_withdrawals'), {
           uid: currentUser.uid,
-          amount: amount,
-          paymentReference: paymentRef,
+          amount: amt,
+          accountHolder: acc,
+          bankName: bank,
+          branchCode: branch,
+          accountNumber: accNo,
+          reference: ref,
+          requestRef,
           status: 'pending',
           timestamp: serverTimestamp()
         });
 
-        showStatus('✅ Withdrawal request submitted! Await admin approval.', 'text-green-400');
-      } catch (error) {
-        console.error('Error submitting withdrawal:', error);
-        showStatus('❌ Failed to submit. Try again later.', 'text-red-400');
+        showStatus(`✅ Request submitted! Ref: ${requestRef}`, 'text-green-400');
+        amountEl.value = '';
+        accHolderEl.value = '';
+        bankNameEl.value = '';
+        branchCodeEl.value = '';
+        accNumberEl.value = '';
+        refCodeEl.value = '';
+      } catch (err) {
+        console.error(err);
+        showStatus('❌ Failed to submit request.', 'text-red-400');
+      } finally {
         resetButton();
       }
     });
