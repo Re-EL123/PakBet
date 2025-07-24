@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PayFast Notify Handler</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-6 rounded shadow max-w-lg w-full">
+    <h2 class="text-xl font-bold mb-4">PayFast ITN Received</h2>
+    <div id="logResult" class="text-gray-700 text-sm space-y-2"></div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "pakbet-b0abe.firebaseapp.com",
+      projectId: "pakbet-b0abe",
+      storageBucket: "pakbet-b0abe.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const ITN_Payload = {
+      m_payment_id: "SuperUnique1",
+      pf_payment_id: "1089250",
+      payment_status: "COMPLETE",
+      item_name: "test+product",
+      item_description: "test+description",
+      amount_gross: 200.00,
+      amount_fee: -4.60,
+      amount_net: 195.40,
+      merchant_id: "31098799",
+      signature: "ad8e7685c9522c24365d7ccea8cb3db7"
+    };
+
+    const passphrase = "jt7NOE43FZPn";
+
+    function generateSignature(params, passphrase) {
+      const keys = Object.keys(params).filter(k => k !== "signature" && params[k] !== "").sort();
+      const pairs = keys.map(k => `${k}=${encodeURIComponent(params[k])}`);
+      if (passphrase) {
+        pairs.push(`passphrase=${encodeURIComponent(passphrase)}`);
+      }
+      const queryString = pairs.join("&");
+
+      // Simple SHA512 hashing (in real backend, use crypto)
+      return sha512(queryString);
+    }
+
+    function sha512(str) {
+      const buffer = new TextEncoder("utf-8").encode(str);
+      return crypto.subtle.digest("SHA-512", buffer).then(buffer => {
+        const hexCodes = [];
+        const view = new DataView(buffer);
+        for (let i = 0; i < view.byteLength; i += 4) {
+          hexCodes.push(("00000000" + view.getUint32(i).toString(16)).slice(-8));
+        }
+        return hexCodes.join("");
+      });
+    }
+
+    async function verifyAndLogITN(payload) {
+      const expectedSig = await generateSignature(payload, passphrase);
+      const actualSig = payload.signature.toLowerCase();
+      const verified = expectedSig.toLowerCase() === actualSig;
+
+      const logEl = document.getElementById("logResult");
+
+      if (!verified) {
+        logEl.innerHTML = `<div class="text-red-600 font-semibold">❌ Signature verification failed</div>`;
+        return;
+      }
+
+      // Log transaction
+      await db.collection("payfast_transactions").add({
+        ...payload,
+        verified: true,
+        timestamp: new Date()
+      });
+
+      logEl.innerHTML = `
+        <div class="text-green-600 font-semibold">✅ Signature verified</div>
+        <div><strong>Payment ID:</strong> ${payload.m_payment_id}</div>
+        <div><strong>Status:</strong> ${payload.payment_status}</div>
+        <div><strong>Amount:</strong> R${payload.amount_gross}</div>
+        <div class="mt-2 text-sm text-gray-500">Transaction logged to Firebase successfully.</div>
+      `;
+    }
+
+    verifyAndLogITN(ITN_Payload);
+  </script>
+</body>
+</html>
