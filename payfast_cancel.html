@@ -6,16 +6,15 @@
   <title>PakBet — Payment Cancelled</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
-<body class="bg-red-50 flex items-center justify-center min-h-screen text-center px-4">
-  <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-    <h1 class="text-2xl font-bold text-red-600 mb-4">Payment Cancelled</h1>
-    <p class="text-gray-700 mb-6">
-      It looks like you cancelled the payment or something went wrong.<br>
-      No money was deducted from your account.
-    </p>
-    <a href="/wallet.html" class="bg-red-600 text-white px-5 py-2 rounded hover:bg-red-700">
-      Return to Wallet
-    </a>
+<body class="bg-red-50 flex items-center justify-center min-h-screen px-4">
+  <div class="bg-white rounded-lg shadow-xl p-8 max-w-md text-center">
+    <svg class="mx-auto mb-4 text-red-500 w-16 h-16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+    <h1 class="text-2xl font-bold text-red-600 mb-2">Payment Cancelled</h1>
+    <p class="text-gray-700 mb-6">It seems your PayFast payment was cancelled. No funds were deducted.</p>
+    <a href="/wallet.html" class="inline-block bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition duration-200">Back to Wallet</a>
+    <p class="mt-4 text-sm text-gray-500">You can try again later or use a different payment method.</p>
   </div>
 </body>
 </html>
