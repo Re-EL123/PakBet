@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Payment Cancelled — PakBet</title>
+  <link rel="stylesheet" href="https://cdn.tailwindcss.com" />
+</head>
+<body class="bg-red-50 min-h-screen flex flex-col items-center justify-center px-4">
+
+  <div class="bg-white shadow-md rounded-lg p-8 max-w-md w-full text-center">
+    <img src="assets/logo.png" alt="PakBet Logo" class="h-16 mx-auto mb-4">
+    <h1 class="text-2xl font-bold text-red-600 mb-2">Payment Cancelled</h1>
+    <p class="text-gray-700 mb-6">
+      Your PayFast payment was cancelled. No money has been deducted from your account.
+    </p>
+
+    <a href="wallet.html" class="inline-block bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3 rounded transition duration-200">
+      Return to Wallet
+    </a>
+  </div>
+
+  <footer class="mt-10 text-sm text-gray-500">
+    &copy; <span id="year"></span> PakBet. All rights reserved.
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
