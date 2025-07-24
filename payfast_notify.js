@@ -1,93 +1,158 @@
-const express = require('express');
-const crypto = require('crypto');
-const axios = require('axios');
-const dns = require('dns');
+const express = require("express");
+const crypto = require("crypto");
+const axios = require("axios");
+const dns = require("dns");
+const admin = require("firebase-admin");
+const bodyParser = require("body-parser");
 const app = express();
-const PORT = 3000;
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
 
-const pfHost = "sandbox.payfast.co.za"; // Use "www.payfast.co.za" for live
-const merchantId = "31098799";
-const passphrase = "jt7NOE43FZPn";
+const testingMode = true;
+const pfHost = testingMode ? "sandbox.payfast.co.za" : "www.payfast.co.za";
+const passPhrase = "jt7NOE43FZPn"; // Your PayFast passphrase
 
-// STEP 1: Validate Signature
-function generateSignature(pfData) {
-  let pfParamString = "";
-  Object.keys(pfData).sort().forEach(key => {
-    if (key !== "signature" && pfData[key] !== "") {
-      pfParamString += `${key}=${encodeURIComponent(pfData[key].trim()).replace(/%20/g, "+")}&`;
-    }
-  });
+// Initialize Firebase Admin
+const serviceAccount = require("./serviceAccountKey.json"); // download this from Firebase console
 
-  if (passphrase !== "") {
-    pfParamString += `passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`;
-  } else {
-    pfParamString = pfParamString.slice(0, -1); // remove last '&'
-  }
-
-  return crypto.createHash('md5').update(pfParamString).digest("hex");
-}
-
-// STEP 2: Validate Source IP
-function validateIP(req, callback) {
-  const validHosts = ['sandbox.payfast.co.za', 'www.payfast.co.za'];
-  const remoteIP = req.ip || req.connection.remoteAddress;
-
-  dns.resolve4(validHosts[0], (err, sandboxIPs) => {
-    dns.resolve4(validHosts[1], (err2, liveIPs) => {
-      const validIPs = [...sandboxIPs, ...liveIPs];
-      callback(validIPs.includes(remoteIP));
-    });
-  });
-}
-
-// STEP 3 & 4: Validate merchant_id and confirm with PayFast
-async function validateWithPayFast(pfData) {
-  try {
-    const response = await axios.post(`https://${pfHost}/eng/query/validate`, new URLSearchParams(pfData).toString(), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      }
-    });
-    return response.data === "VALID";
-  } catch (error) {
-    return false;
-  }
-}
-
-app.post('/payfast_notify', async (req, res) => {
-  const pfData = req.body;
-
-  // Step 1: Signature Check
-  const signatureIsValid = generateSignature(pfData) === pfData.signature;
-  if (!signatureIsValid) return res.status(400).send("Invalid Signature");
-
-  // Step 2: Validate IP
-  validateIP(req, async (ipIsValid) => {
-    if (!ipIsValid) return res.status(403).send("Invalid IP");
-
-    // Step 3: Check merchant_id
-    if (pfData.merchant_id !== merchantId) return res.status(400).send("Merchant ID mismatch");
-
-    // Step 4: Confirm with PayFast
-    const confirmed = await validateWithPayFast(pfData);
-    if (!confirmed) return res.status(400).send("PayFast validation failed");
-
-    // ✅ If all checks pass, continue processing payment
-    if (pfData.payment_status === "COMPLETE") {
-      const amountPaid = parseFloat(pfData.amount_gross);
-      const userId = pfData.custom_str1;
-
-      // TODO: Credit wallet / store transaction / log, etc.
-      console.log(`✅ Payment successful for User ID: ${userId}, Amount: R${amountPaid}`);
-    }
-
-    res.status(200).send("OK");
-  });
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://pakbet-b0abe-default-rtdb.firebaseio.com"
 });
 
+const db = admin.database();
+
+// Helpers
+const generateSignature = (data, passPhrase = null) => {
+  let pfOutput = "";
+  for (let key in data) {
+    if (data.hasOwnProperty(key) && data[key] !== "" && key !== "signature") {
+      pfOutput += `${key}=${encodeURIComponent(data[key].trim()).replace(/%20/g, "+")}&`;
+    }
+  }
+
+  let getString = pfOutput.slice(0, -1);
+  if (passPhrase !== null) {
+    getString += `&passphrase=${encodeURIComponent(passPhrase.trim()).replace(/%20/g, "+")}`;
+  }
+
+  return crypto.createHash("md5").update(getString).digest("hex");
+};
+
+const pfValidSignature = (pfData, pfParamString, passPhrase = null) => {
+  if (passPhrase !== null) {
+    pfParamString += `&passphrase=${encodeURIComponent(passPhrase.trim()).replace(/%20/g, "+")}`;
+  }
+
+  const signature = crypto.createHash("md5").update(pfParamString).digest("hex");
+  return pfData["signature"] === signature;
+};
+
+async function ipLookup(domain) {
+  return new Promise((resolve, reject) => {
+    dns.lookup(domain, { all: true }, (err, address) => {
+      if (err) {
+        reject(err);
+      } else {
+        const addressIps = address.map((item) => item.address);
+        resolve(addressIps);
+      }
+    });
+  });
+}
+
+const pfValidIP = async (req) => {
+  const validHosts = [
+    "www.payfast.co.za",
+    "sandbox.payfast.co.za",
+    "w1w.payfast.co.za",
+    "w2w.payfast.co.za"
+  ];
+
+  let validIps = [];
+  const pfIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+
+  for (let host of validHosts) {
+    const ips = await ipLookup(host);
+    validIps = [...validIps, ...ips];
+  }
+
+  const uniqueIps = [...new Set(validIps)];
+  return uniqueIps.includes(pfIp);
+};
+
+const pfValidPaymentData = (expectedAmount, pfData) => {
+  return Math.abs(parseFloat(expectedAmount) - parseFloat(pfData["amount_gross"])) <= 0.01;
+};
+
+const pfValidServerConfirmation = async (pfHost, pfParamString) => {
+  try {
+    const response = await axios.post(`https://${pfHost}/eng/query/validate`, pfParamString, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+    });
+
+    return response.data.trim() === "VALID";
+  } catch (error) {
+    console.error("Validation request failed", error);
+    return false;
+  }
+};
+
+// Main Notify Route
+app.post("/payfast_notify", async (req, res) => {
+  const pfData = { ...req.body };
+
+  // Build pfParamString
+  let pfParamString = "";
+  for (let key in pfData) {
+    if (pfData.hasOwnProperty(key) && key !== "signature") {
+      pfParamString += `${key}=${encodeURIComponent(pfData[key].trim()).replace(/%20/g, "+")}&`;
+    }
+  }
+  pfParamString = pfParamString.slice(0, -1);
+
+  const expectedAmount = pfData["amount_gross"];
+  const userId = pfData["custom_str1"]; // assuming you're passing UID via custom_str1
+
+  const check1 = pfValidSignature(pfData, pfParamString, passPhrase);
+  const check2 = await pfValidIP(req);
+  const check3 = pfValidPaymentData(expectedAmount, pfData);
+  const check4 = await pfValidServerConfirmation(pfHost, pfParamString);
+
+  if (check1 && check2 && check3 && check4 && pfData["payment_status"] === "COMPLETE") {
+    try {
+      const walletRef = db.ref(`wallets/${userId}/balance`);
+      const snapshot = await walletRef.once("value");
+      const currentBalance = parseFloat(snapshot.val()) || 0;
+
+      const newBalance = currentBalance + parseFloat(expectedAmount);
+      await walletRef.set(newBalance);
+
+      // Optionally log to transactions
+      await db.ref("transactions").push({
+        type: "deposit",
+        userId: userId,
+        amount: parseFloat(expectedAmount),
+        timestamp: Date.now(),
+        source: "PayFast",
+        status: "confirmed"
+      });
+
+      console.log("User wallet credited successfully");
+      res.status(200).send("OK");
+    } catch (err) {
+      console.error("Error updating wallet:", err);
+      res.status(500).send("FAIL");
+    }
+  } else {
+    console.warn("PayFast verification failed");
+    res.status(400).send("FAIL");
+  }
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`PayFast Notify server listening on port ${PORT}`);
+  console.log(`PayFast notify listener running on port ${PORT}`);
 });
