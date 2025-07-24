@@ -3,69 +3,94 @@
 <head>
   <meta charset="UTF-8">
   <title>PakBet — PayFast Payment</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script>
-    // Initialize Firebase
-    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCfragjh50KQRj5G6jm7fZdR2bI2NoQsdk",
-  authDomain: "pakbet-b0abe.firebaseapp.com",
-  databaseURL: "https://pakbet-b0abe-default-rtdb.firebaseio.com",
-  projectId: "pakbet-b0abe",
-  storageBucket: "pakbet-b0abe.firebasestorage.app",
-  messagingSenderId: "499452911724",
-  appId: "1:499452911724:web:7b0e314d16dce8a6dcb849",
-  measurementId: "G-QPLND82T33"
-};
-    firebase.initializeApp(firebaseConfig);
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-800 p-4">
-  <h1 class="text-xl font-bold mb-4">Pay with PayFast</h1>
+<body class="bg-gray-100">
+  <div class="max-w-xl mx-auto mt-16 bg-white p-8 rounded shadow">
+    <h1 class="text-2xl font-bold mb-6 text-center text-green-700">Pay with PayFast</h1>
 
-  <form id="payfastForm" action="https://sandbox.payfast.co.za/eng/process" method="post">
-    <!-- Merchant credentials -->
-    <input type="hidden" name="merchant_id" value="10031690">
-    <input type="hidden" name="merchant_key" value="aweba9ac-a921-44a0-31b2-159849c4ccfc">
+    <form id="payfastForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Amount (R)</label>
+        <input type="number" step="0.01" id="amount" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+      </div>
 
-    <!-- Return URLs -->
-    <input type="hidden" name="return_url" value="https://www.pakbet.online/payfast_success.html">
-    <input type="hidden" name="cancel_url" value="https://www.pakbet.online/payfast_cancel.html">
-    <input type="hidden" name="notify_url" value="https://www.pakbet.online/payfast_notify">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Payment Description</label>
+        <input type="text" id="description" value="PakBet Deposit" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+      </div>
 
-    <!-- Transaction info -->
-    <input type="hidden" name="amount" id="amount" value="">
-    <input type="hidden" name="item_name" value="PakBet Wallet Top-Up">
-    <input type="hidden" name="custom_str1" id="custom_str1" value="">
-
-    <!-- Payment UI -->
-    <label for="topupAmount">Enter amount (R):</label><br>
-    <input type="number" id="topupAmount" min="1" required class="border p-2 rounded"><br><br>
-
-    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Pay Now</button>
-  </form>
+      <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+        Proceed to PayFast
+      </button>
+    </form>
+  </div>
 
   <script>
-    firebase.auth().onAuthStateChanged((user) => {
-      if (user) {
-        document.getElementById("custom_str1").value = user.uid;
+    const MERCHANT_ID = "31098799";
+    const MERCHANT_KEY = "7pfqwjedjskwg";
+    const PASSPHRASE = "jt7NOE43FZPn";
+    const TESTING = true;
+    const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-        const form = document.getElementById("payfastForm");
-        form.addEventListener("submit", (e) => {
-          const amount = document.getElementById("topupAmount").value;
-          if (!amount || parseFloat(amount) < 1) {
-            e.preventDefault();
-            alert("Please enter a valid amount.");
-            return;
-          }
-          document.getElementById("amount").value = parseFloat(amount).toFixed(2);
-        });
-      } else {
-        alert("You must be logged in to top up your wallet.");
-        window.location.href = "/login.html";
+    function generateSignature(data, passphrase) {
+      let sortedKeys = Object.keys(data).sort();
+      let paramString = sortedKeys
+        .map((key) => `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`)
+        .join("&");
+
+      if (passphrase) {
+        paramString += `&passphrase=${encodeURIComponent(passphrase)}`;
       }
+
+      return CryptoJS.MD5(paramString).toString();
+    }
+
+    document.getElementById("payfastForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
+      const description = document.getElementById("description").value;
+
+      const paymentId = "PF_" + Date.now();
+
+      const myData = {
+        merchant_id: MERCHANT_ID,
+        merchant_key: MERCHANT_KEY,
+        return_url: "https://pakbet.online/payfast_success.html",
+        cancel_url: "https://pakbet.online/payfast_cancel.html",
+        notify_url: "https://pakbet.online/payfast_notify.html",
+        name_first: "PakBet",
+        name_last: "User",
+        email_address: "info@pakbet.online",
+        m_payment_id: paymentId,
+        amount: amount,
+        item_name: description,
+      };
+
+      myData.signature = generateSignature(myData, PASSPHRASE);
+
+      let form = document.createElement("form");
+      form.method = "post";
+      form.action = `https://${pfHost}/eng/process`;
+
+      for (let key in myData) {
+        if (myData.hasOwnProperty(key)) {
+          let input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = myData[key];
+          form.appendChild(input);
+        }
+      }
+
+      document.body.appendChild(form);
+      form.submit();
     });
   </script>
+
+  <!-- CryptoJS MD5 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </body>
 </html>
