@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PakBet — PayFast Payment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+  <header class="bg-gray-800 p-4 text-center text-green-400 text-2xl font-bold">
+    PakBet — Pay with PayFast
+  </header>
+
+  <main class="flex-grow flex items-center justify-center px-4 py-10">
+    <div class="bg-gray-800 p-6 rounded-lg shadow-md w-full max-w-md space-y-6">
+      <div>
+        <label class="block mb-1 text-sm">Full Name</label>
+        <input type="text" id="name_first" placeholder="First Name" class="w-full p-3 rounded bg-gray-700 text-white mb-2" />
+        <input type="text" id="name_last" placeholder="Last Name" class="w-full p-3 rounded bg-gray-700 text-white" />
+      </div>
+
+      <div>
+        <label class="block mb-1 text-sm">Email</label>
+        <input type="email" id="email_address" placeholder="you@example.com" class="w-full p-3 rounded bg-gray-700 text-white" />
+      </div>
+
+      <div>
+        <label class="block mb-1 text-sm">Amount (ZAR)</label>
+        <input type="number" id="amount" placeholder="50.00" class="w-full p-3 rounded bg-gray-700 text-white" />
+      </div>
+
+      <button onclick="createPayFastForm()" class="bg-green-500 hover:bg-green-600 w-full py-3 rounded font-bold text-white text-lg">
+        Proceed to PayFast
+      </button>
+
+      <div id="payfast-form" class="mt-4"></div>
+    </div>
+  </main>
+
+  <footer class="bg-gray-800 text-center py-6 text-sm text-gray-400">
+    &copy; 2025 PakBet — Secure Payment Gateway
+  </footer>
+
+  <script>
+    function generateSignature(data, passphrase = "") {
+      let output = [];
+      Object.keys(data)
+        .sort()
+        .forEach(function(key) {
+          if (data[key] !== "") {
+            output.push(`${key}=${encodeURIComponent(data[key].trim()).replace(/%20/g, "+")}`);
+          }
+        });
+
+      let string = output.join("&");
+      if (passphrase !== "") {
+        string += "&passphrase=" + encodeURIComponent(passphrase.trim()).replace(/%20/g, "+");
+      }
+
+      return CryptoJS.MD5(string).toString();
+    }
+
+    function createPayFastForm() {
+      const pfHost = "www.payfast.co.za"; // or "sandbox.payfast.co.za" for testing
+
+      const myData = {};
+      myData["merchant_id"] = "31098799";
+      myData["merchant_key"] = "7pfqwjedjskwg";
+      myData["return_url"] = "https://pakbet.online/payment_success.html";
+      myData["cancel_url"] = "https://pakbet.online/payment_cancel.html";
+      myData["notify_url"] = "https://pakbet.online/payfast_notify.php";
+
+      myData["name_first"] = document.getElementById("name_first").value;
+      myData["name_last"] = document.getElementById("name_last").value;
+      myData["email_address"] = document.getElementById("email_address").value;
+
+      myData["m_payment_id"] = "pakbet_" + Date.now(); // unique transaction ID
+      myData["amount"] = parseFloat(document.getElementById("amount").value).toFixed(2);
+      myData["item_name"] = "PakBet Wallet Top-Up";
+
+      const myPassphrase = "jt7NOE43FZPn"; // optional
+      myData["signature"] = generateSignature(myData, myPassphrase);
+
+      let htmlForm = `<form action="https://${pfHost}/eng/process" method="post" id="dynamicForm">`;
+      for (let key in myData) {
+        if (myData.hasOwnProperty(key)) {
+          let value = myData[key];
+          if (value !== "") {
+            htmlForm += `<input type="hidden" name="${key}" value="${value}" />`;
+          }
+        }
+      }
+      htmlForm += `<button type="submit" class="mt-4 w-full py-3 bg-yellow-500 hover:bg-yellow-600 rounded font-bold text-white">Confirm & Pay Now</button></form>`;
+
+      document.getElementById("payfast-form").innerHTML = htmlForm;
+      document.getElementById("dynamicForm").submit(); // Auto-submit the form
+    }
+  </script>
+
+  <!-- Add CryptoJS for signature generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</body>
+</html>
