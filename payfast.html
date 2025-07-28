@@ -52,13 +52,12 @@
 
       const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
       const description = document.getElementById("description").value;
-      const userUID = localStorage.getItem("uid") || "guest_" + Date.now(); // customize how you track user
-
+      const userUID = localStorage.getItem("uid") || "guest_" + Date.now();
       const paymentId = "PF_" + Date.now();
 
-      const myData = {
+      // Signature-relevant data (do NOT include merchant_key here)
+      const paymentData = {
         merchant_id: MERCHANT_ID,
-        merchant_key: MERCHANT_KEY,
         return_url: "https://pakbet.online/payfast_success.html",
         cancel_url: "https://pakbet.online/payfast_cancel.html",
         notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
@@ -71,18 +70,24 @@
         custom_str1: userUID
       };
 
-      myData.signature = generateSignature(myData, PASSPHRASE);
+      // Generate signature
+      const signature = generateSignature(paymentData, PASSPHRASE);
+      paymentData.signature = signature;
 
+      // Now add merchant_key back (used by PayFast, not part of signature)
+      paymentData.merchant_key = MERCHANT_KEY;
+
+      // Build and submit form
       let form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
 
-      for (let key in myData) {
-        if (myData.hasOwnProperty(key)) {
+      for (let key in paymentData) {
+        if (paymentData.hasOwnProperty(key)) {
           let input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          input.value = myData[key];
+          input.value = paymentData[key];
           form.appendChild(input);
         }
       }
