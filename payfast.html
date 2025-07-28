@@ -53,21 +53,12 @@
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
     function generateSignature(data, passphrase) {
-      // Exclude signature and merchant_key, ignore empty values, sort keys alphabetically
       const keys = Object.keys(data)
-        .filter(
-          (key) =>
-            key !== "signature" &&
-            key !== "merchant_key" &&
-            data[key] !== "" &&
-            data[key] !== null &&
-            data[key] !== undefined
-        )
+        .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
         .sort();
 
-      // Build signature string with raw trimmed values (no URL encoding)
       let paramString = keys
-        .map((key) => `${key}=${data[key].toString().trim()}`)
+        .map(key => `${key}=${data[key].toString().trim()}`)
         .join("&");
 
       if (passphrase) {
@@ -77,59 +68,53 @@
       return md5(paramString);
     }
 
-    document
-      .getElementById("payfastForm")
-      .addEventListener("submit", function (e) {
-        e.preventDefault();
+    document.getElementById("payfastForm").addEventListener("submit", function (e) {
+      e.preventDefault();
 
-        const amount = parseFloat(
-          document.getElementById("amount").value
-        ).toFixed(2);
-        const description = document.getElementById("description").value;
-        const userUID = localStorage.getItem("uid") || "guest_" + Date.now();
-        const paymentId = "PF_" + Date.now();
+      const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
+      const description = document.getElementById("description").value.trim();
+      const userUID = localStorage.getItem("uid") || "guest_" + Date.now();
+      const paymentId = "PF_" + Date.now();
 
-        // Data for signature excludes merchant_key
-        const paymentData = {
-          merchant_id: MERCHANT_ID,
-          return_url: "https://pakbet.online/payfast_success.html",
-          cancel_url: "https://pakbet.online/payfast_cancel.html",
-          notify_url:
-            "https://payfast-notify.akanishibiri4422.workers.dev/",
-          name_first: "PakBet",
-          name_last: "User",
-          email_address: "info@pakbet.online",
-          m_payment_id: paymentId,
-          amount: amount,
-          item_name: description,
-          item_description: "PakBet Online Deposit",
-          custom_str1: userUID,
-        };
+      const paymentData = {
+        merchant_id: MERCHANT_ID,
+        return_url: "https://pakbet.online/payfast_success.html",
+        cancel_url: "https://pakbet.online/payfast_cancel.html",
+        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
+        name_first: "PakBet",
+        name_last: "User",
+        email_address: "info@pakbet.online",
+        m_payment_id: paymentId,
+        amount: amount,
+        item_name: description,
+        item_description: "PakBet Online Deposit",
+        custom_str1: userUID,
+      };
 
-        // Generate signature
-        paymentData.signature = generateSignature(paymentData, PASSPHRASE);
+      // Generate and attach signature
+      paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-        // Add merchant_key separately (NOT included in signature)
-        paymentData.merchant_key = MERCHANT_KEY;
+      // Add merchant_key for the sandbox (NOT included in signature)
+      paymentData.merchant_key = MERCHANT_KEY;
 
-        // Build and submit form
-        const form = document.createElement("form");
-        form.method = "post";
-        form.action = `https://${pfHost}/eng/process`;
+      // Build and submit form
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = `https://${pfHost}/eng/process`;
 
-        for (const key in paymentData) {
-          if (paymentData.hasOwnProperty(key)) {
-            const input = document.createElement("input");
-            input.type = "hidden";
-            input.name = key;
-            input.value = paymentData[key];
-            form.appendChild(input);
-          }
+      for (const key in paymentData) {
+        if (paymentData.hasOwnProperty(key)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = paymentData[key];
+          form.appendChild(input);
         }
+      }
 
-        document.body.appendChild(form);
-        form.submit();
-      });
+      document.body.appendChild(form);
+      form.submit();
+    });
   </script>
 </body>
 </html>
