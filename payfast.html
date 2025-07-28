@@ -52,7 +52,7 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // PayFast signature generation per official docs
+    // Generate PayFast signature (exclude merchant_key and signature)
     function generateSignature(data, passphrase) {
       const keys = Object.keys(data)
         .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
@@ -67,6 +67,11 @@
       }
 
       return md5(paramString);
+    }
+
+    // Helper to encode value for form submission (spaces to '+')
+    function encodeValue(val) {
+      return encodeURIComponent(val).replace(/%20/g, "+");
     }
 
     document.getElementById("payfastForm").addEventListener("submit", function (e) {
@@ -95,10 +100,10 @@
       // Generate signature (exclude merchant_key)
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-      // Add merchant_key to form data (not part of signature)
+      // Add merchant_key for sandbox (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create and submit the form to PayFast
+      // Create and submit form with proper encoding of values
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
@@ -108,7 +113,8 @@
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          input.value = paymentData[key];
+          // encode with spaces as pluses to match PayFast expectation
+          input.value = encodeValue(paymentData[key]);
           form.appendChild(input);
         }
       }
