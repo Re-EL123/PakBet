@@ -69,7 +69,7 @@
       return md5(paramString);
     }
 
-    // Helper to encode value for form submission (spaces to '+')
+    // Encode value for PayFast form (spaces replaced by '+')
     function encodeValue(val) {
       return encodeURIComponent(val).replace(/%20/g, "+");
     }
@@ -100,10 +100,10 @@
       // Generate signature (exclude merchant_key)
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-      // Add merchant_key for sandbox (not part of signature)
+      // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create and submit form with proper encoding of values
+      // Create form and submit with encoded values
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
@@ -113,7 +113,6 @@
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          // encode with spaces as pluses to match PayFast expectation
           input.value = encodeValue(paymentData[key]);
           form.appendChild(input);
         }
