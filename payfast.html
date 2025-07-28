@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>PakBet — PayFast Payment</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
@@ -40,6 +40,8 @@
         Proceed to PayFast
       </button>
     </form>
+
+    <pre id="debugOutput" class="mt-6 p-4 bg-gray-200 rounded text-xs font-mono overflow-auto"></pre>
   </div>
 
   <!-- MD5 hashing library -->
@@ -52,10 +54,10 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // Generate PayFast signature from raw trimmed values, no encoding
-    function generateSignature(data, passphrase) {
+    // Generate signature string (raw trimmed values, no encoding)
+    function buildSignatureString(data, passphrase) {
       const keys = Object.keys(data)
-        .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
+        .filter(k => k !== "signature" && k !== "merchant_key" && data[k] !== "")
         .sort();
 
       let paramString = keys
@@ -66,10 +68,17 @@
         paramString += `&passphrase=${passphrase.trim()}`;
       }
 
-      return md5(paramString);
+      return paramString;
     }
 
-    document.getElementById("payfastForm").addEventListener("submit", function(e) {
+    function generateSignature(data, passphrase) {
+      const signatureString = buildSignatureString(data, passphrase);
+      document.getElementById("debugOutput").textContent =
+        "Signature String to sign:\n" + signatureString + "\n\n";
+      return md5(signatureString);
+    }
+
+    document.getElementById("payfastForm").addEventListener("submit", function (e) {
       e.preventDefault();
 
       const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
@@ -82,9 +91,9 @@
         return_url: "https://pakbet.online/payfast_success.html",
         cancel_url: "https://pakbet.online/payfast_cancel.html",
         notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
-        name_first: "PakBet",
-        name_last: "User",
-        email_address: "info@pakbet.online",
+        name_first: "Akani",
+        name_last: "Shibiri",
+        email_address: "akanishibiri4422@gmail.com",
         m_payment_id: paymentId,
         amount: amount,
         item_name: description,
@@ -92,25 +101,23 @@
         custom_str1: userUID,
       };
 
-      // Generate signature (no encoding)
+      // Generate signature from raw string and show debug output
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
       // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create and submit form with raw values (no encoding)
+      // Append form inputs without encoding (must match signature string exactly)
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
 
-      for (const key in paymentData) {
-        if (paymentData.hasOwnProperty(key)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = paymentData[key];
-          form.appendChild(input);
-        }
+      for (const key of Object.keys(paymentData)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = paymentData[key];
+        form.appendChild(input);
       }
 
       document.body.appendChild(form);
