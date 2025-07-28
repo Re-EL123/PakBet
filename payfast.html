@@ -29,7 +29,6 @@
 
   <script>
     const MERCHANT_ID = "10000100";
-    const MERCHANT_KEY = "46f0cd694581a";
     const PASSPHRASE = "jt7NOE43FZPn";
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
@@ -55,7 +54,6 @@
       const userUID = localStorage.getItem("uid") || "guest_" + Date.now();
       const paymentId = "PF_" + Date.now();
 
-      // Signature-relevant data (do NOT include merchant_key here)
       const paymentData = {
         merchant_id: MERCHANT_ID,
         return_url: "https://pakbet.online/payfast_success.html",
@@ -74,8 +72,7 @@
       const signature = generateSignature(paymentData, PASSPHRASE);
       paymentData.signature = signature;
 
-      // Now add merchant_key back (used by PayFast, not part of signature)
-      paymentData.merchant_key = MERCHANT_KEY;
+      // DO NOT ADD merchant_key HERE
 
       // Build and submit form
       let form = document.createElement("form");
