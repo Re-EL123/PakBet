@@ -52,6 +52,7 @@
 
       const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
       const description = document.getElementById("description").value;
+      const userUID = localStorage.getItem("uid") || "guest_" + Date.now(); // customize how you track user
 
       const paymentId = "PF_" + Date.now();
 
@@ -60,13 +61,14 @@
         merchant_key: MERCHANT_KEY,
         return_url: "https://pakbet.online/payfast_success.html",
         cancel_url: "https://pakbet.online/payfast_cancel.html",
-        notify_url: "https://pakbet.online/payfast_notify.html",
+        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
         name_first: "PakBet",
         name_last: "User",
         email_address: "info@pakbet.online",
         m_payment_id: paymentId,
         amount: amount,
         item_name: description,
+        custom_str1: userUID
       };
 
       myData.signature = generateSignature(myData, PASSPHRASE);
