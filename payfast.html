@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>PakBet — PayFast Payment</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,12 +13,12 @@
     <form id="payfastForm" class="space-y-4">
       <div>
         <label class="block text-sm font-medium text-gray-700">Amount (R)</label>
-        <input type="number" step="0.01" id="amount" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+        <input type="number" step="0.01" id="amount" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
       </div>
 
       <div>
         <label class="block text-sm font-medium text-gray-700">Payment Description</label>
-        <input type="text" id="description" value="PakBet Deposit" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+        <input type="text" id="description" value="PakBet Deposit" required class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
       </div>
 
       <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
@@ -38,16 +38,18 @@
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
     function generateSignature(data, passphrase) {
+      // Exclude signature and empty values, sort keys alphabetically
       const keys = Object.keys(data)
         .filter(key => key !== "signature" && data[key] !== "")
         .sort();
 
+      // Build string without URL encoding values, using raw trimmed strings
       let paramString = keys
-        .map(key => `${key}=${data[key]}`)
+        .map(key => `${key}=${data[key].toString().trim()}`)
         .join("&");
 
       if (passphrase) {
-        paramString += `&passphrase=${passphrase}`;
+        paramString += `&passphrase=${passphrase.trim()}`;
       }
 
       return md5(paramString);
@@ -63,7 +65,7 @@
 
       const paymentData = {
         merchant_id: MERCHANT_ID,
-        merchant_key: MERCHANT_KEY, // Used for sandbox
+        merchant_key: MERCHANT_KEY, // Required for sandbox
         return_url: "https://pakbet.online/payfast_success.html",
         cancel_url: "https://pakbet.online/payfast_cancel.html",
         notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
@@ -86,11 +88,13 @@
       form.action = `https://${pfHost}/eng/process`;
 
       for (let key in paymentData) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = paymentData[key];
-        form.appendChild(input);
+        if (paymentData.hasOwnProperty(key)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = paymentData[key];
+          form.appendChild(input);
+        }
       }
 
       document.body.appendChild(form);
