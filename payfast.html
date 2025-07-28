@@ -52,12 +52,12 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // Encode values per PayFast specification (spaces => '+')
+    // Encode values for signature (spaces to '+')
     function pfEncode(val) {
       return encodeURIComponent(val.toString().trim()).replace(/%20/g, "+");
     }
 
-    // Generate signature with encoded values, excluding merchant_key and signature
+    // Generate signature string and hash
     function generateSignature(data, passphrase) {
       const keys = Object.keys(data)
         .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
@@ -97,13 +97,13 @@
         custom_str1: userUID,
       };
 
-      // Generate signature using encoded values
+      // Generate signature with encoded values
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
       // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create form and append inputs with encoded values
+      // Create form and submit raw values (NO encoding here!)
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
@@ -113,7 +113,7 @@
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          input.value = pfEncode(paymentData[key]);
+          input.value = paymentData[key];  // **raw value, no encode here**
           form.appendChild(input);
         }
       }
