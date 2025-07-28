@@ -54,15 +54,26 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // Build signature string from raw values, no encoding
+    // Build signature string from raw values, no encoding, keys lowercase & trimmed
     function buildSignatureString(data, passphrase) {
+      // Filter keys, lowercase keys, exclude empty, exclude merchant_key & signature
       const keys = Object.keys(data)
-        .filter(k => k !== "signature" && k !== "merchant_key" && data[k] !== "")
+        .filter(k => k.toLowerCase() !== "signature" && k.toLowerCase() !== "merchant_key" && data[k] !== "")
+        .map(k => k.toLowerCase())
         .sort();
 
-      let paramString = keys
-        .map(key => `${key}=${data[key].toString().trim()}`)
-        .join("&");
+      // Build key=value pairs from original keys (matching lowercase sorted keys)
+      // We need to match original keys with lowercase sorted keys
+      // So rebuild an array of [key, value] pairs from original data with lowercase keys
+      const keyValuePairs = [];
+      for (const key of keys) {
+        // Find original key with case-insensitive match
+        const origKey = Object.keys(data).find(k => k.toLowerCase() === key);
+        const value = data[origKey].toString().trim();
+        keyValuePairs.push(`${key}=${value}`);
+      }
+
+      let paramString = keyValuePairs.join("&");
 
       if (passphrase) {
         paramString += `&passphrase=${passphrase.trim()}`;
@@ -101,23 +112,25 @@
         custom_str1: userUID,
       };
 
-      // Generate signature from raw string and show debug output
+      // Generate signature (make sure keys lowercase in signature string)
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
       // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Append form inputs without encoding (must match signature string exactly)
+      // Append form inputs WITHOUT encoding to match signature string exactly
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
 
-      for (const key of Object.keys(paymentData)) {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = key;
-        input.value = paymentData[key];  // RAW value, no encodeURIComponent
-        form.appendChild(input);
+      for (const key in paymentData) {
+        if (paymentData.hasOwnProperty(key)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = key;
+          input.value = paymentData[key];
+          form.appendChild(input);
+        }
       }
 
       document.body.appendChild(form);
