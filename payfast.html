@@ -52,6 +52,7 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
+    // PayFast signature generation per official docs
     function generateSignature(data, passphrase) {
       const keys = Object.keys(data)
         .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
@@ -77,27 +78,27 @@
       const paymentId = "PF_" + Date.now();
 
       const paymentData = {
-        amount: amount,
-        cancel_url: "https://pakbet.online/payfast_cancel.html",
-        custom_str1: userUID,
-        email_address: "info@pakbet.online",
-        item_description: "PakBet Online Deposit",
-        item_name: description,
-        m_payment_id: paymentId,
         merchant_id: MERCHANT_ID,
+        return_url: "https://pakbet.online/payfast_success.html",
+        cancel_url: "https://pakbet.online/payfast_cancel.html",
+        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
         name_first: "PakBet",
         name_last: "User",
-        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
-        return_url: "https://pakbet.online/payfast_success.html"
+        email_address: "info@pakbet.online",
+        m_payment_id: paymentId,
+        amount: amount,
+        item_name: description,
+        item_description: "PakBet Online Deposit",
+        custom_str1: userUID,
       };
 
-      // Generate and attach signature
+      // Generate signature (exclude merchant_key)
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-      // Add merchant_key for the sandbox (NOT included in signature)
+      // Add merchant_key to form data (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Build and submit form
+      // Create and submit the form to PayFast
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
