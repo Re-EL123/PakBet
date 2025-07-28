@@ -77,18 +77,18 @@
       const paymentId = "PF_" + Date.now();
 
       const paymentData = {
-        merchant_id: MERCHANT_ID,
-        return_url: "https://pakbet.online/payfast_success.html",
+        amount: amount,
         cancel_url: "https://pakbet.online/payfast_cancel.html",
-        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
+        custom_str1: userUID,
+        email_address: "info@pakbet.online",
+        item_description: "PakBet Online Deposit",
+        item_name: description,
+        m_payment_id: paymentId,
+        merchant_id: MERCHANT_ID,
         name_first: "PakBet",
         name_last: "User",
-        email_address: "info@pakbet.online",
-        m_payment_id: paymentId,
-        amount: amount,
-        item_name: description,
-        item_description: "PakBet Online Deposit",
-        custom_str1: userUID,
+        notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
+        return_url: "https://pakbet.online/payfast_success.html"
       };
 
       // Generate and attach signature
