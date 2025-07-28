@@ -27,6 +27,9 @@
     </form>
   </div>
 
+  <!-- MD5 hashing library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
+
   <script>
     const MERCHANT_ID = "10000100";
     const MERCHANT_KEY = "46f0cd694581a";
@@ -35,16 +38,19 @@
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
     function generateSignature(data, passphrase) {
-      let sortedKeys = Object.keys(data).sort();
-      let paramString = sortedKeys
-        .map((key) => `${key}=${encodeURIComponent(data[key]).replace(/%20/g, "+")}`)
+      const keys = Object.keys(data)
+        .filter(key => key !== "signature" && data[key] !== "")
+        .sort();
+
+      let paramString = keys
+        .map(key => `${key}=${data[key]}`)
         .join("&");
 
       if (passphrase) {
-        paramString += `&passphrase=${encodeURIComponent(passphrase)}`;
+        paramString += `&passphrase=${passphrase}`;
       }
 
-      return CryptoJS.MD5(paramString).toString();
+      return md5(paramString);
     }
 
     document.getElementById("payfastForm").addEventListener("submit", function (e) {
@@ -57,7 +63,7 @@
 
       const paymentData = {
         merchant_id: MERCHANT_ID,
-        merchant_key: MERCHANT_KEY, // Required for sandbox
+        merchant_key: MERCHANT_KEY, // Used for sandbox
         return_url: "https://pakbet.online/payfast_success.html",
         cancel_url: "https://pakbet.online/payfast_cancel.html",
         notify_url: "https://payfast-notify.akanishibiri4422.workers.dev/",
@@ -74,27 +80,22 @@
       // Generate and attach signature
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-      // Build and submit the form
-      let form = document.createElement("form");
+      // Build and submit form
+      const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
 
       for (let key in paymentData) {
-        if (paymentData.hasOwnProperty(key)) {
-          let input = document.createElement("input");
-          input.type = "hidden";
-          input.name = key;
-          input.value = paymentData[key];
-          form.appendChild(input);
-        }
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = paymentData[key];
+        form.appendChild(input);
       }
 
       document.body.appendChild(form);
       form.submit();
     });
   </script>
-
-  <!-- CryptoJS MD5 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 </body>
 </html>
