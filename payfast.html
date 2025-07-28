@@ -52,32 +52,29 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // Generate PayFast signature (exclude merchant_key and signature)
+    // Encode values per PayFast specification (spaces => '+')
+    function pfEncode(val) {
+      return encodeURIComponent(val.toString().trim()).replace(/%20/g, "+");
+    }
+
+    // Generate signature with encoded values, excluding merchant_key and signature
     function generateSignature(data, passphrase) {
       const keys = Object.keys(data)
         .filter(key => key !== "signature" && key !== "merchant_key" && data[key] !== "")
         .sort();
 
       let paramString = keys
-        .map(key => `${key}=${data[key].toString().trim()}`)
+        .map(key => `${key}=${pfEncode(data[key])}`)
         .join("&");
 
       if (passphrase) {
-        paramString += `&passphrase=${passphrase.trim()}`;
+        paramString += `&passphrase=${pfEncode(passphrase)}`;
       }
 
       return md5(paramString);
     }
 
-    // Encode form input value except for URLs and email
-    function encodeValue(key, val) {
-      if (["return_url", "cancel_url", "notify_url", "email_address"].includes(key)) {
-        return val.toString().trim();
-      }
-      return encodeURIComponent(val).replace(/%20/g, "+");
-    }
-
-    document.getElementById("payfastForm").addEventListener("submit", function (e) {
+    document.getElementById("payfastForm").addEventListener("submit", function(e) {
       e.preventDefault();
 
       const amount = parseFloat(document.getElementById("amount").value).toFixed(2);
@@ -100,13 +97,13 @@
         custom_str1: userUID,
       };
 
-      // Generate signature (exclude merchant_key)
+      // Generate signature using encoded values
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
       // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create form and submit with proper encoding
+      // Create form and append inputs with encoded values
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
@@ -116,7 +113,7 @@
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          input.value = encodeValue(key, paymentData[key]);
+          input.value = pfEncode(paymentData[key]);
           form.appendChild(input);
         }
       }
@@ -127,4 +124,3 @@
   </script>
 </body>
 </html>
-
