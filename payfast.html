@@ -54,7 +54,7 @@
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
-    // Generate signature string (raw trimmed values, no encoding)
+    // Build signature string from raw values, no encoding
     function buildSignatureString(data, passphrase) {
       const keys = Object.keys(data)
         .filter(k => k !== "signature" && k !== "merchant_key" && data[k] !== "")
@@ -116,7 +116,7 @@
         const input = document.createElement("input");
         input.type = "hidden";
         input.name = key;
-        input.value = paymentData[key];
+        input.value = paymentData[key];  // RAW value, no encodeURIComponent
         form.appendChild(input);
       }
 
