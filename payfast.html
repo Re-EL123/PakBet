@@ -69,8 +69,11 @@
       return md5(paramString);
     }
 
-    // Encode value for PayFast form (spaces replaced by '+')
-    function encodeValue(val) {
+    // Encode form input value except for URLs and email
+    function encodeValue(key, val) {
+      if (["return_url", "cancel_url", "notify_url", "email_address"].includes(key)) {
+        return val.toString().trim();
+      }
       return encodeURIComponent(val).replace(/%20/g, "+");
     }
 
@@ -103,7 +106,7 @@
       // Add merchant_key (not part of signature)
       paymentData.merchant_key = MERCHANT_KEY;
 
-      // Create form and submit with encoded values
+      // Create form and submit with proper encoding
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
@@ -113,7 +116,7 @@
           const input = document.createElement("input");
           input.type = "hidden";
           input.name = key;
-          input.value = encodeValue(paymentData[key]);
+          input.value = encodeValue(key, paymentData[key]);
           form.appendChild(input);
         }
       }
@@ -124,3 +127,4 @@
   </script>
 </body>
 </html>
+
