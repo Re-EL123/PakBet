@@ -48,39 +48,31 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.19.0/js/md5.min.js"></script>
 
   <script>
-    const MERCHANT_ID = "10000100"; // Sandbox merchant ID
-    const MERCHANT_KEY = "46f0cd694581a"; // Sandbox merchant key
-    const PASSPHRASE = "jt7NOE43FZPn"; // Sandbox passphrase
+    const MERCHANT_ID = "10041085"; // Updated to your sandbox merchant ID
+    const MERCHANT_KEY = "cjkijem1m4zi1"; // Updated to your sandbox merchant key
+    const PASSPHRASE = "jt7NOE43FZPn"; // Your sandbox passphrase (unchanged)
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
     function buildSignatureString(data, passphrase) {
-      // Sort keys alphabetically, excluding signature
-      const keys = Object.keys(data).filter(k => k !== "signature").sort();
-      // Build query string with URL-encoded values
+      // Use insertion order (no .sort()) to match PayFast's required sequence
+      const keys = Object.keys(data).filter(k => k !== "signature");
       let paramString = keys
-        .map(k => {
-          let value = data[k];
-          // Ensure value is a string and trim any whitespace
-          value = (value || "").toString().trim();
-          // URL-encode and replace %20 with +
-          return `${k}=${encodeURIComponent(value).replace(/%20/g, "+")}`;
-        })
+        .map(k => `${k}=${encodeURIComponent(data[k]).replace(/%20/g, "+")}`)
         .join("&");
 
-      // Append passphrase if provided
       if (passphrase) {
         paramString += `&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`;
       }
-
       return paramString;
     }
 
     function generateSignature(data, passphrase) {
       const signatureString = buildSignatureString(data, passphrase);
+      const signature = md5(signatureString);
       document.getElementById("debugOutput").textContent =
-        "Signature String to sign:\n" + signatureString + "\n\n";
-      return md5(signatureString);
+        "Signature String:\n" + signatureString + "\n\nGenerated Signature:\n" + signature;
+      return signature;
     }
 
     document.getElementById("payfastForm").addEventListener("submit", function (e) {
@@ -107,14 +99,8 @@
         custom_str1: userUID
       };
 
-      // Generate signature
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
-      // Debug: Log the payment data and signature
-      console.log("Payment Data:", paymentData);
-      console.log("Generated Signature:", paymentData.signature);
-
-      // Create form dynamically
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
