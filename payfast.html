@@ -50,19 +50,29 @@
   <script>
     const MERCHANT_ID = "10000100"; // Sandbox merchant ID
     const MERCHANT_KEY = "46f0cd694581a"; // Sandbox merchant key
-    const PASSPHRASE = "jt7NOE43FZPn"; // Your sandbox passphrase
+    const PASSPHRASE = "jt7NOE43FZPn"; // Sandbox passphrase
     const TESTING = true;
     const pfHost = TESTING ? "sandbox.payfast.co.za" : "www.payfast.co.za";
 
     function buildSignatureString(data, passphrase) {
+      // Sort keys alphabetically, excluding signature
       const keys = Object.keys(data).filter(k => k !== "signature").sort();
+      // Build query string with URL-encoded values
       let paramString = keys
-        .map(k => `${k}=${encodeURIComponent(data[k]).replace(/%20/g, "+")}`)
+        .map(k => {
+          let value = data[k];
+          // Ensure value is a string and trim any whitespace
+          value = (value || "").toString().trim();
+          // URL-encode and replace %20 with +
+          return `${k}=${encodeURIComponent(value).replace(/%20/g, "+")}`;
+        })
         .join("&");
 
+      // Append passphrase if provided
       if (passphrase) {
         paramString += `&passphrase=${encodeURIComponent(passphrase).replace(/%20/g, "+")}`;
       }
+
       return paramString;
     }
 
@@ -97,8 +107,14 @@
         custom_str1: userUID
       };
 
+      // Generate signature
       paymentData.signature = generateSignature(paymentData, PASSPHRASE);
 
+      // Debug: Log the payment data and signature
+      console.log("Payment Data:", paymentData);
+      console.log("Generated Signature:", paymentData.signature);
+
+      // Create form dynamically
       const form = document.createElement("form");
       form.method = "post";
       form.action = `https://${pfHost}/eng/process`;
