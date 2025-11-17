@@ -7,57 +7,47 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen">
-
   <div class="bg-gray-800 p-8 rounded-xl w-full max-w-md shadow-xl">
     <h1 class="text-2xl font-bold text-center text-green-400">iKhokha Payment</h1>
     <p class="text-center mt-2 text-gray-300">
       Complete your payment securely.
     </p>
-
     <div class="mt-6 space-y-4">
       <input id="amount" type="number" placeholder="Amount (ZAR)"
              class="w-full p-3 rounded bg-gray-700 text-white">
-
       <button id="payBtn"
               class="w-full bg-green-500 hover:bg-green-600 py-3 font-bold rounded">
         Pay with iKhokha
       </button>
-
       <p id="status" class="text-center text-sm mt-2 text-gray-400"></p>
     </div>
   </div>
-
   <script>
     document.getElementById("payBtn").onclick = async () => {
       const amount = parseFloat(document.getElementById("amount").value);
       const status = document.getElementById("status");
-
       if (!amount || amount <= 0) {
         status.textContent = "Enter a valid amount.";
         return;
       }
-
+      const amountInCents = Math.round(amount * 100);
       status.textContent = "Processing payment…";
-
       try {
         const res = await fetch("/ikhokha/pay", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ amount })
+          body: JSON.stringify({ amount: amountInCents })
         });
-
         const data = await res.json();
-
-        if (data.url) {
-          window.location.href = data.url; // Redirect to iKhokha checkout
+        if (data.responseCode === "00" && data.paylinkUrl) {
+          window.location.href = data.paylinkUrl; // Redirect to iKhokha checkout
         } else {
-          status.textContent = "Payment failed: " + data.error;
+          status.textContent = "Payment failed: " + (data.message || data.error || "Unknown error");
         }
       } catch (err) {
         status.textContent = "Error connecting to payment server.";
       }
     };
   </script>
-
 </body>
 </html>
