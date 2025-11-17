@@ -37,7 +37,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
           <select id="deposit-method" class="p-2 rounded bg-gray-700 text-white w-full sm:w-auto">
             <option value="manual">Manual Deposit</option>
-            <option value="payfast">PayFast (Card / EFT)</option>
+            <option value="ikhokha">iKhokha (Card / EFT)</option>
           </select>
           <button id="depositBtn" class="transition-transform transform hover:scale-105 bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-bold disabled:opacity-50 w-full sm:w-auto">
             Deposit
@@ -188,8 +188,9 @@
       try {
         if (mtd === 'manual') {
           window.location.href = `deposit.html?ref=${ref}`;
-        } else if (mtd === 'payfast') {
-          window.location.href = `payfast.html?ref=${ref}&uid=${uid}`;
+        } 
+        else if (mtd === 'ikhokha') {
+          window.location.href = `ikhokha.html?ref=${ref}&uid=${uid}`;
         }
       } catch (err) {
         console.error('Deposit error:', err);
